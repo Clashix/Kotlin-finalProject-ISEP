@@ -79,45 +79,17 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun logout() {
-        auth.signOut()
-        _user.value = null
-        _navigateDestination.value = "login"
-    }
+    // ... (rest of code)
 
-    fun clearNavigation() {
-        _navigateDestination.value = null
-    }
-
-    fun uploadProfileImage(imageUri: Uri) {
-        val currentUser = _user.value ?: return
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val storageRef = storage.reference.child("profile_images/${currentUser.id}.jpg")
-                val uploadTask = storageRef.putFile(imageUri).await()
-                val downloadUrl = storageRef.downloadUrl.await()
-
-                val updatedUser = currentUser.copy(profileImageUrl = downloadUrl.toString())
-                db.collection("users").document(currentUser.id).set(updatedUser).await()
-                _user.value = updatedUser
-            } catch (e: Exception) {
-                _error.value = "Failed to upload image: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    private fun saveUserToFirestore(user: User) {
-        viewModelScope.launch {
-            try {
-                db.collection("users").document(user.id).set(user).await()
-                _user.value = user
-                routeUser(user)
-            } catch (e: Exception) {
-                _error.value = "Failed to save user data: ${e.message}"
-            }
+    private suspend fun saveUserToFirestore(user: User) {
+        try {
+            db.collection("users").document(user.id).set(user).await()
+            _user.value = user
+            routeUser(user)
+        } catch (e: Exception) {
+            _error.value = "Failed to save user data: ${e.message}"
+            // If saving to Firestore fails, we might want to consider deleting the auth user
+            // to keep states in sync, but for now we just report the error.
         }
     }
 

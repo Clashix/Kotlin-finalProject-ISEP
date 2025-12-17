@@ -7,10 +7,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
-import com.isep.kotlinproject.model.UserRole
-import com.isep.kotlinproject.viewmodel.AuthViewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.text.input.VisualTransformation
 
 @Composable
 fun SignupScreen(
@@ -20,7 +20,11 @@ fun SignupScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isPasswordVisible by remember { mutableStateOf(false) }
     var selectedRole by remember { mutableStateOf(UserRole.PLAYER) }
+
+    val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$".toRegex()
+    val isEmailValid = email.isEmpty() || email.matches(emailRegex)
 
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -50,7 +54,16 @@ fun SignupScreen(
             onValueChange = { email = it },
             label = { Text("Email") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = !isEmailValid,
+            supportingText = {
+                if (!isEmailValid) {
+                    Text(
+                        text = "Invalid email format",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -59,9 +72,19 @@ fun SignupScreen(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                val image = if (isPasswordVisible)
+                    Icons.Filled.Visibility
+                else
+                    Icons.Filled.VisibilityOff
+
+                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                    Icon(imageVector = image, contentDescription = if (isPasswordVisible) "Hide password" else "Show password")
+                }
+            },
             supportingText = {
                 Text(
                     text = "Min 6 chars, at least 1 number",
@@ -83,11 +106,11 @@ fun SignupScreen(
         } else {
             Button(
                 onClick = { 
-                    if (name.isNotBlank() && email.isNotBlank() && password.length >= 6 && password.any { it.isDigit() }) {
+                    if (name.isNotBlank() && email.matches(emailRegex) && password.length >= 6 && password.any { it.isDigit() }) {
                         viewModel.signup(name.trim(), email.trim(), password.trim(), selectedRole)
                     }
                 },
-                enabled = name.isNotBlank() && email.isNotBlank() && password.length >= 6 && password.any { it.isDigit() },
+                enabled = name.isNotBlank() && email.matches(emailRegex) && password.length >= 6 && password.any { it.isDigit() },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Sign Up")
