@@ -1,14 +1,14 @@
-# 🎮 Application de Notation de Jeux Vidéo
+#  Application de Notation de Jeux Vidéo
 
 Application mobile permettant aux joueurs de noter et commenter des jeux vidéo, et aux éditeurs de gérer leurs jeux avec des statistiques détaillées.
 
-## 📱 Description
+##  Description
 
 Cette application offre une plateforme complète pour la notation et l'évaluation de jeux vidéo. Elle permet aux joueurs de découvrir, noter et partager leurs avis sur leurs jeux préférés, tandis que les éditeurs peuvent gérer leur catalogue et suivre les performances de leurs jeux grâce à un tableau de bord analytique.
 
-## 🧩 Fonctionnalités
+##  Fonctionnalités
 
-### 👥 Pour les Joueurs
+###  Pour les Joueurs
 
 - **Authentification** : Inscription et connexion sécurisées via Firebase
 - **Catalogue de jeux** : Consultation de la liste complète des jeux disponibles
@@ -19,7 +19,7 @@ Cette application offre une plateforme complète pour la notation et l'évaluati
 - **Bibliothèque** : Possibilité de marquer les jeux comme "joués"
 - **Intégration Steam** : Récupération de données depuis l'API Steam (si disponible)
 
-### 🏢 Pour les Éditeurs
+###  Pour les Éditeurs
 
 - **Authentification dédiée** : Inscription et connexion en tant qu'éditeur
 - **Gestion de catalogue** : Ajout, modification et suppression de jeux
@@ -30,7 +30,7 @@ Cette application offre une plateforme complète pour la notation et l'évaluati
   - Moyenne quotidienne des notes
 - **Visualisations** : Graphiques interactifs pour analyser les performances
 
-### ⚙️ Fonctionnalités Techniques
+###  Fonctionnalités Techniques
 
 - **Gestion de profils** : Photo de profil, nom, type de compte (joueur/éditeur)
 - **Upload d'images** : Stockage des images de jeux et profils via Firebase Storage
@@ -40,7 +40,7 @@ Cette application offre une plateforme complète pour la notation et l'évaluati
 - **Sauvegarde** : Backup automatique avec Firebase
 - **API Steam** : Intégration pour récupérer la liste des jeux
 
-## 🛠️ Technologies
+##  Technologies
 
 - **Langage** : Kotlin
 - **Framework UI** : Jetpack Compose
@@ -50,13 +50,13 @@ Cette application offre une plateforme complète pour la notation et l'évaluati
 - **Gestion d'état** : State Management optimisé
 - **Internationalisation** : i18n
 
-## 📋 Prérequis
+##  Prérequis
 
 - Android Studio
 - JDK 11 ou supérieur
 - Compte Firebase configuré
 
-## 🚀 Installation
+##  Installation
 
 1. Cloner le repository
 
