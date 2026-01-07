@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -24,7 +25,8 @@ import com.isep.kotlinproject.viewmodel.GameViewModel
 fun GameListScreen(
     viewModel: GameViewModel,
     onGameClick: (String) -> Unit,
-    onAddGameClick: () -> Unit
+    onAddGameClick: () -> Unit,
+    onProfileClick: () -> Unit
 ) {
     val filteredGames by viewModel.searchResults.collectAsState()
     val allGames by viewModel.games.collectAsState()
@@ -37,6 +39,9 @@ fun GameListScreen(
                 actions = {
                     IconButton(onClick = onAddGameClick) {
                         Icon(Icons.Default.Add, contentDescription = "Add Game")
+                    }
+                    IconButton(onClick = onProfileClick) {
+                        Icon(Icons.Default.Person, contentDescription = "Profile")
                     }
                 }
             )

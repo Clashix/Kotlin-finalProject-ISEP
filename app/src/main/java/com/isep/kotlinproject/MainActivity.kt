@@ -83,7 +83,8 @@ class MainActivity : ComponentActivity() {
                             GameListScreen(
                                 viewModel = gameViewModel,
                                 onGameClick = { gameId -> navController.navigate("game_detail/$gameId") },
-                                onAddGameClick = { navController.navigate("add_edit_game") }
+                                onAddGameClick = { navController.navigate("add_edit_game") },
+                                onProfileClick = { navController.navigate("profile") }
                             )
                         }
                         
