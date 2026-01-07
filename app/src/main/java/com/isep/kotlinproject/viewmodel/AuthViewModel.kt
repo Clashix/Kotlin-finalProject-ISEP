@@ -155,39 +155,4 @@ class AuthViewModel : ViewModel() {
             _navigateDestination.value = "editor_dashboard"
         }
     }
-
-    fun clearNavigation() {
-        _navigateDestination.value = null
-    }
-
-    fun logout() {
-        auth.signOut()
-        _user.value = null
-        _navigateDestination.value = "login"
-    }
-
-    fun uploadProfileImage(uri: Uri) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            val userId = auth.currentUser?.uid
-            if (userId != null) {
-                try {
-                    val ref = storage.reference.child("profile_images/$userId.jpg")
-                    ref.putFile(uri).await()
-                    val downloadUrl = ref.downloadUrl.await().toString()
-                    
-                    // Update user profile in Firestore
-                    db.collection("users").document(userId).update("profileImageUrl", downloadUrl).await()
-                    
-                    // Update local state
-                    val updatedUser = _user.value?.copy(profileImageUrl = downloadUrl)
-                    _user.value = updatedUser
-                } catch (e: Exception) {
-                    _error.value = "Failed to upload image: ${e.message}"
-                } finally {
-                    _isLoading.value = false
-                }
-            }
-        }
-    }
 }
