@@ -18,7 +18,8 @@ Cette application offre une plateforme complète pour la notation et l'évaluati
 - **Historique personnel** : Consultation de tous vos avis et notes
 - **Bibliothèque** : Possibilité de marquer les jeux comme "joués"
 - **Intégration Steam** : Récupération de données depuis l'API Steam (si disponible)
-
+@test.com
+- test1234
 ###  Pour les Éditeurs
 
 - **Authentification dédiée** : Inscription et connexion en tant qu'éditeur
