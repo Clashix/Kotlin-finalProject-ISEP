@@ -2,6 +2,7 @@ package com.isep.kotlinproject.ui.profile
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -26,7 +27,7 @@ fun ProfileScreen(
     val user by viewModel.user.collectAsState()
     
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let { viewModel.uploadProfileImage(it) }
     }
@@ -55,7 +56,9 @@ fun ProfileScreen(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        Button(onClick = { imagePickerLauncher.launch("image/*") }) {
+        Button(onClick = { 
+            imagePickerLauncher.launch(arrayOf("image/*"))
+        }) {
             Text("Change Profile Picture")
         }
 

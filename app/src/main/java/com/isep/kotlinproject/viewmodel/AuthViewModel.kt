@@ -79,7 +79,40 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    // ... (rest of code)
+    fun clearNavigation() {
+        _navigateDestination.value = null
+    }
+
+    fun logout() {
+        auth.signOut()
+        _user.value = null
+        _navigateDestination.value = null
+    }
+
+    fun uploadProfileImage(uri: Uri) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) return
+        
+        val userId = currentUser.uid
+        val storageRef = storage.reference.child("profile_images/$userId")
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                storageRef.putFile(uri).await()
+                val downloadUrl = storageRef.downloadUrl.await().toString()
+                
+                db.collection("users").document(userId)
+                    .update("profileImageUrl", downloadUrl).await()
+                
+                _user.value = _user.value?.copy(profileImageUrl = downloadUrl)
+            } catch (e: Exception) {
+                _error.value = "Upload failed: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
 
     private suspend fun saveUserToFirestore(user: User) {
         try {
