@@ -11,6 +11,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.isep.kotlinproject.model.UserRole
+import com.isep.kotlinproject.viewmodel.AuthViewModel
 
 @Composable
 fun SignupScreen(
@@ -97,9 +101,22 @@ fun SignupScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ... Role Selection ...
+        Text(text = "Select Role", style = MaterialTheme.typography.titleMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = selectedRole == UserRole.PLAYER,
+                onClick = { selectedRole = UserRole.PLAYER }
+            )
+            Text(text = "Player")
+            Spacer(modifier = Modifier.width(16.dp))
+            RadioButton(
+                selected = selectedRole == UserRole.EDITOR,
+                onClick = { selectedRole = UserRole.EDITOR }
+            )
+            Text(text = "Editor")
+        }
 
-        // ...
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (isLoading) {
             CircularProgressIndicator()
