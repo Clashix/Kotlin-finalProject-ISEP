@@ -11,10 +11,13 @@ composeBom = "2024.09.00"
 firebaseBom = "34.6.0"
 navVersion = "2.8.3"
 coilVersion = "2.7.0"
+retrofitVersion = "2.9.0"
 
 [libraries]
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navVersion" }
 io-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coilVersion" }
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofitVersion" }
+converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofitVersion" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

@@ -111,7 +111,7 @@ fun GameCard(game: Game, onClick: () -> Unit) {
     ) {
         Column {
             AsyncImage(
-                model = game.imageUrl,
+                model = game.posterUrl,
                 contentDescription = game.title,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -152,7 +152,7 @@ fun GameItem(game: Game, onClick: () -> Unit) {
     ) {
         Row(modifier = Modifier.padding(8.dp)) {
             AsyncImage(
-                model = game.imageUrl,
+                model = game.posterUrl,
                 contentDescription = game.title,
                 modifier = Modifier
                     .size(80.dp)
