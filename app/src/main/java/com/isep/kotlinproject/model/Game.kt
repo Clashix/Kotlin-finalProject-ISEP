@@ -2,7 +2,8 @@ package com.isep.kotlinproject.model
 
 data class Game(
     val id: String = "",
-    val userId: String = "", // Owner of the game entry
+    val editorId: String = "", // Editor who created the game
+    val editorName: String = "", // Name of the editor
     val title: String = "",
     val description: String = "",
     val genre: String = "",
@@ -10,9 +11,9 @@ data class Game(
     val imageUrl: String = "",
     val steamAppId: String? = null,
     val developer: String = "",
-    val averageRating: Double = 0.0,
-    val ratingCount: Int = 0,
-    val reviews: List<Review> = emptyList()
+    val averageRating: Double = 0.0, // Average rating (1-5 stars)
+    val ratingCount: Int = 0, // Total number of ratings
+    val totalRatingSum: Int = 0 // Sum of all ratings (for calculating average)
 ) {
     val posterUrl: String
         get() = if (imageUrl.isNotBlank()) {

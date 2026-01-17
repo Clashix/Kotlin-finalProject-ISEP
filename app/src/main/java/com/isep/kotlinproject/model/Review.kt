@@ -5,7 +5,7 @@ data class Review(
     val gameId: String = "",
     val userId: String = "",
     val userName: String = "",
-    val rating: Double = 0.0,
+    val rating: Int = 5, // Rating from 1 to 5 stars
     val comment: String = "",
     val timestamp: Long = System.currentTimeMillis()
 )

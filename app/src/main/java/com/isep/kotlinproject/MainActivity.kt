@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.isep.kotlinproject.model.UserRole
 import com.isep.kotlinproject.ui.auth.LoginScreen
 import com.isep.kotlinproject.ui.auth.SignupScreen
 import com.isep.kotlinproject.ui.game.AddEditGameScreen
@@ -39,18 +40,31 @@ class MainActivity : ComponentActivity() {
                 val navigateDestination by authViewModel.navigateDestination.collectAsState()
                 val currentUser by authViewModel.user.collectAsState()
 
+                // Update GameViewModel with user info and start listening
                 LaunchedEffect(currentUser) {
                     if (currentUser != null) {
-                        gameViewModel.startListening()
+                        val user = currentUser!!
+                        gameViewModel.setUserInfo(user.role, user.name)
+                        
+                        // Editors see only their games, Players see all games
+                        if (user.role == UserRole.EDITOR) {
+                            gameViewModel.startListening(isEditor = true, editorId = user.id)
+                        } else {
+                            gameViewModel.startListening(isEditor = false)
+                        }
                     } else {
                         gameViewModel.stopListening()
                     }
                 }
 
+                // Handle navigation after login/signup
                 LaunchedEffect(navigateDestination) {
                     navigateDestination?.let { destination ->
-                        // Redirect player_home and editor_dashboard to game_list for now
-                        val finalDest = if (destination == "player_home" || destination == "editor_dashboard") "game_list" else destination
+                        // Both roles go to game_list, but with different views
+                        val finalDest = when (destination) {
+                            "player_home", "editor_dashboard" -> "game_list"
+                            else -> destination
+                        }
                         navController.navigate(finalDest) {
                             popUpTo("login") { inclusive = true }
                         }
@@ -87,29 +101,35 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         
-                        // Game Routes
+                        // Game List - works for both Player and Editor
                         composable("game_list") {
+                            val userRole = currentUser?.role ?: UserRole.PLAYER
                             GameListScreen(
                                 viewModel = gameViewModel,
+                                userRole = userRole,
                                 onGameClick = { gameId -> navController.navigate("game_detail/$gameId") },
                                 onAddGameClick = { navController.navigate("add_edit_game") },
                                 onProfileClick = { navController.navigate("profile") }
                             )
                         }
                         
+                        // Game Detail - works for both Player and Editor (with different actions)
                         composable(
                             route = "game_detail/{gameId}",
                             arguments = listOf(navArgument("gameId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val gameId = backStackEntry.arguments?.getString("gameId") ?: return@composable
+                            val userRole = currentUser?.role ?: UserRole.PLAYER
                             GameDetailScreen(
                                 gameId = gameId,
                                 viewModel = gameViewModel,
+                                userRole = userRole,
                                 onEditClick = { id -> navController.navigate("add_edit_game?gameId=$id") },
                                 onBack = { navController.popBackStack() }
                             )
                         }
                         
+                        // Add/Edit Game - Editor only (but we check role in the screen)
                         composable(
                             route = "add_edit_game?gameId={gameId}",
                             arguments = listOf(navArgument("gameId") { 
