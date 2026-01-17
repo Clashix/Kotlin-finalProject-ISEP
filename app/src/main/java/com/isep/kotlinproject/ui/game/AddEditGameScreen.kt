@@ -196,8 +196,10 @@ fun AddEditGameScreen(
                             developer = developer,
                             imageUrl = existingImageUrl, // Will be overwritten if imageUri is not null
                             steamAppId = steamAppId,
+                            // Stats are preserved from existing game if editing
                             averageRating = selectedGame?.averageRating ?: 0.0,
-                            ratingCount = selectedGame?.ratingCount ?: 0
+                            ratingCount = selectedGame?.ratingCount ?: 0,
+                            totalRatingSum = selectedGame?.totalRatingSum ?: 0
                         )
                         if (gameId == null) {
                             viewModel.addGame(game, imageUri, onBack)
