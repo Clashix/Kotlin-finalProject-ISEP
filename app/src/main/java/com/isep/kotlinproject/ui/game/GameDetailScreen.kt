@@ -69,7 +69,7 @@ fun GameDetailScreen(
         LazyColumn(modifier = Modifier.padding(padding)) {
             item {
                 AsyncImage(
-                    model = game!!.imageUrl,
+                    model = game!!.posterUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -107,8 +107,8 @@ fun GameDetailScreen(
         AddReviewDialog(
             onDismiss = { showReviewDialog = false },
             onSubmit = { rating, comment ->
-                // In a real app, get userId and userName from AuthViewModel
-                viewModel.addReview(game!!.id, "current_user_id", "You", rating, comment)
+                // userId and userName are now handled by the ViewModel
+                viewModel.addReview(game!!.id, rating, comment)
                 showReviewDialog = false
             }
         )

@@ -37,6 +37,15 @@ class MainActivity : ComponentActivity() {
                 val authViewModel: AuthViewModel = viewModel()
                 val gameViewModel: GameViewModel = viewModel()
                 val navigateDestination by authViewModel.navigateDestination.collectAsState()
+                val currentUser by authViewModel.user.collectAsState()
+
+                LaunchedEffect(currentUser) {
+                    if (currentUser != null) {
+                        gameViewModel.startListening()
+                    } else {
+                        gameViewModel.stopListening()
+                    }
+                }
 
                 LaunchedEffect(navigateDestination) {
                     navigateDestination?.let { destination ->
