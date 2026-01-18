@@ -1,5 +1,6 @@
 package com.isep.kotlinproject
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +24,7 @@ import com.isep.kotlinproject.ui.auth.SignupScreen
 import com.isep.kotlinproject.ui.game.AddEditGameScreen
 import com.isep.kotlinproject.ui.game.GameDetailScreen
 import com.isep.kotlinproject.ui.game.GameListScreen
+import com.isep.kotlinproject.ui.onboarding.OnboardingScreen
 import com.isep.kotlinproject.ui.profile.ProfileScreen
 import com.isep.kotlinproject.ui.theme.KotlinProjectTheme
 import com.isep.kotlinproject.viewmodel.AuthViewModel
@@ -39,6 +41,11 @@ class MainActivity : ComponentActivity() {
                 val gameViewModel: GameViewModel = viewModel()
                 val navigateDestination by authViewModel.navigateDestination.collectAsState()
                 val currentUser by authViewModel.user.collectAsState()
+
+                // Check Onboarding State
+                val sharedPref = getPreferences(Context.MODE_PRIVATE)
+                val onboardingCompleted = sharedPref.getBoolean("onboarding_completed", false)
+                val startDestination = if (onboardingCompleted) "login" else "onboarding"
 
                 // Update GameViewModel with user info and start listening
                 LaunchedEffect(currentUser) {
@@ -75,9 +82,23 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = "login",
+                        startDestination = startDestination,
                         modifier = Modifier.padding(innerPadding)
                     ) {
+                        composable("onboarding") {
+                            OnboardingScreen(
+                                onFinished = {
+                                    with(sharedPref.edit()) {
+                                        putBoolean("onboarding_completed", true)
+                                        apply()
+                                    }
+                                    navController.navigate("login") {
+                                        popUpTo("onboarding") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+                        
                         composable("login") {
                             LoginScreen(
                                 viewModel = authViewModel,
