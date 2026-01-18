@@ -1,20 +1,20 @@
 package com.isep.kotlinproject.ui.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import com.isep.kotlinproject.viewmodel.AuthViewModel
 import com.isep.kotlinproject.model.UserRole
+import com.isep.kotlinproject.ui.components.AppPasswordInput
+import com.isep.kotlinproject.ui.components.AppTextField
+import com.isep.kotlinproject.viewmodel.AuthViewModel
 
 @Composable
 fun SignupScreen(
@@ -24,127 +24,138 @@ fun SignupScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
     var selectedRole by remember { mutableStateOf(UserRole.PLAYER) }
 
+    // Validation Logic
     val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$".toRegex()
     val isEmailValid = email.isEmpty() || email.matches(emailRegex)
+    val isPasswordValid = password.isEmpty() || (password.length >= 6 && password.any { it.isDigit() })
+    val isNameValid = name.isNotBlank()
 
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
     ) {
-        Text(text = "Create Account", style = MaterialTheme.typography.headlineMedium)
-        
-        Spacer(modifier = Modifier.height(32.dp))
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                // If the screen is small, we might want to make it scrollable, 
+                // but for now let's assume it fits or rely on system scrolling behavior if keyboard opens.
+                // Ideally, wrap content in a scrollable column if too long.
+                ,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Create Account", 
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
 
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Name") },
-            modifier = Modifier.fillMaxWidth()
-        )
+                Spacer(modifier = Modifier.height(24.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+                AppTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = "Full Name",
+                    leadingIcon = Icons.Default.Person,
+                    errorMessage = if (!isNameValid && name.isNotEmpty()) "Name is required" else null
+                )
 
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
-            isError = !isEmailValid,
-            supportingText = {
-                if (!isEmailValid) {
-                    Text(
-                        text = "Invalid email format",
-                        color = MaterialTheme.colorScheme.error
+                Spacer(modifier = Modifier.height(16.dp))
+
+                AppTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = "Email Address",
+                    leadingIcon = Icons.Default.Email,
+                    errorMessage = if (!isEmailValid) "Invalid email format" else null
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                AppPasswordInput(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Password",
+                    helpText = "Min 6 chars, at least 1 number",
+                    errorMessage = if (!isPasswordValid && password.isNotEmpty()) "Password too weak" else null
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "I am a...", 
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    FilterChip(
+                        selected = selectedRole == UserRole.PLAYER,
+                        onClick = { selectedRole = UserRole.PLAYER },
+                        label = { Text("Player") },
+                        leadingIcon = { if (selectedRole == UserRole.PLAYER) Icon(Icons.Default.Person, null) else null }
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    FilterChip(
+                        selected = selectedRole == UserRole.EDITOR,
+                        onClick = { selectedRole = UserRole.EDITOR },
+                        label = { Text("Editor") },
+                        leadingIcon = { if (selectedRole == UserRole.EDITOR) Icon(Icons.Default.Person, null) else null } // Use proper icon if available
                     )
                 }
-            }
-        )
 
-        Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-            trailingIcon = {
-                val image = if (isPasswordVisible)
-                    Icons.Filled.Visibility
-                else
-                    Icons.Filled.VisibilityOff
-
-                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                    Icon(imageVector = image, contentDescription = if (isPasswordVisible) "Hide password" else "Show password")
-                }
-            },
-            supportingText = {
-                Text(
-                    text = "Min 6 chars, at least 1 number",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (password.isNotEmpty() && (!password.any { it.isDigit() } || password.length < 6)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            isError = password.isNotEmpty() && (!password.any { it.isDigit() } || password.length < 6)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(text = "Select Role", style = MaterialTheme.typography.bodyLarge)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(
-                selected = selectedRole == UserRole.PLAYER,
-                onClick = { selectedRole = UserRole.PLAYER }
-            )
-            Text(text = "Player", modifier = Modifier.padding(start = 8.dp))
-            
-            Spacer(modifier = Modifier.width(24.dp))
-            
-            RadioButton(
-                selected = selectedRole == UserRole.EDITOR,
-                onClick = { selectedRole = UserRole.EDITOR }
-            )
-            Text(text = "Editor", modifier = Modifier.padding(start = 8.dp))
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (isLoading) {
-            CircularProgressIndicator()
-        } else {
-            Button(
-                onClick = { 
-                    if (name.isNotBlank() && email.matches(emailRegex) && password.length >= 6 && password.any { it.isDigit() }) {
-                        viewModel.signup(name.trim(), email.trim(), password.trim(), selectedRole)
+                if (isLoading) {
+                    CircularProgressIndicator()
+                } else {
+                    Button(
+                        onClick = { 
+                            if (name.isNotBlank() && isEmailValid && isPasswordValid && password.isNotEmpty()) {
+                                viewModel.signup(name.trim(), email.trim(), password.trim(), selectedRole)
+                            }
+                        },
+                        enabled = name.isNotBlank() && isEmailValid && isPasswordValid && password.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                    ) {
+                        Text("Sign Up")
                     }
-                },
-                enabled = name.isNotBlank() && email.matches(emailRegex) && password.length >= 6 && password.any { it.isDigit() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sign Up")
+                }
+
+                if (error != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = error!!, 
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(onClick = onNavigateToLogin) {
+                    Text("Already have an account? Log In")
+                }
             }
-        }
-
-        if (error != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = error!!, color = MaterialTheme.colorScheme.error)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TextButton(onClick = onNavigateToLogin) {
-            Text("Already have an account? Log In")
         }
     }
 }

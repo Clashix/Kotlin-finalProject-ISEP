@@ -5,19 +5,26 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,33 +74,13 @@ fun GameDetailScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(game!!.title, maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    // Only the owner (editor who created the game) can edit/delete
-                    if (isOwner) {
-                        IconButton(onClick = { onEditClick(game!!.id) }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit")
-                        }
-                        IconButton(onClick = { showDeleteConfirmation = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete")
-                        }
-                    }
-                }
-            )
-        },
         floatingActionButton = {
-            // Only players can leave reviews
             if (!isEditor) {
                 ExtendedFloatingActionButton(
                     onClick = { showReviewDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
                 ) {
                     Icon(
                         if (userReview != null) Icons.Default.Edit else Icons.Default.Star,
@@ -102,107 +89,205 @@ fun GameDetailScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(if (userReview != null) "Edit Review" else "Rate Game")
                 }
-            }
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier.padding(padding),
-            contentPadding = PaddingValues(bottom = 80.dp)
-        ) {
-            item {
-                // Game Image
-                AsyncImage(
-                    model = game!!.posterUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp),
-                    contentScale = ContentScale.Crop
-                )
-                
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // Title and basic info
-                    Text(
-                        text = game!!.title, 
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Rating Stats Card
-                    RatingStatsCard(
-                        averageRating = game!!.averageRating,
-                        ratingCount = game!!.ratingCount
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Game Details
-                    InfoRow("Genre", game!!.genre)
-                    InfoRow("Developer", game!!.developer)
-                    InfoRow("Release Date", game!!.releaseDate)
-                    InfoRow("Added by", game!!.editorName)
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Description
-                    Text(
-                        text = "Description",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = game!!.description.ifEmpty { "No description available." },
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // User's Review Section (for players)
-                    if (!isEditor && userReview != null) {
-                        Text(
-                            text = "Your Review",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        UserReviewCard(
-                            review = userReview!!,
-                            onEdit = { showReviewDialog = true },
-                            onDelete = { viewModel.deleteMyReview(gameId) }
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
+            } else if (isOwner) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    FloatingActionButton(
+                        onClick = { onEditClick(game!!.id) },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
-                    
-                    // All Reviews Section
-                    Text(
-                        text = "Reviews (${reviews.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    if (reviews.isEmpty()) {
-                        Text(
-                            text = "No reviews yet. Be the first to rate this game!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    FloatingActionButton(
+                        onClick = { showDeleteConfirmation = true },
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete")
                     }
                 }
             }
-            
-            items(reviews) { review ->
-                ReviewItem(
-                    review = review,
-                    isCurrentUser = review.userId == currentUserId
-                )
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = 100.dp) // Space for FAB
+            ) {
+                // HERO SECTION
+                item {
+                    Box(modifier = Modifier.height(350.dp)) {
+                        AsyncImage(
+                            model = game!!.posterUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .height(350.dp),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Gradient Fade
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                                            MaterialTheme.colorScheme.background
+                                        ),
+                                        startY = 200f
+                                    )
+                                )
+                        )
+                        
+                        // Back Button (Overlaid)
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier
+                                .padding(top = 40.dp, start = 16.dp)
+                                .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                        
+                        // Title Overlay
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = game!!.title,
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Star, null, tint = Color(0xFFFFB800), modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = String.format("%.1f", game!!.averageRating),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = " (${game!!.ratingCount} reviews)",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // INFO CHIPS
+                item {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        InfoChip(icon = Icons.Default.Gamepad, text = game!!.genre)
+                        InfoChip(icon = Icons.Default.Code, text = game!!.developer)
+                        InfoChip(icon = Icons.Default.CalendarToday, text = game!!.releaseDate.take(4))
+                    }
+                }
+
+                // DESCRIPTION
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Text(
+                            text = "About",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = game!!.description.ifEmpty { "No description available." },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.4
+                        )
+                    }
+                }
+                
+                item { Spacer(modifier = Modifier.height(32.dp)) }
+
+                // REVIEWS SECTION
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Reviews",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (reviews.isNotEmpty()) {
+                                TextButton(onClick = { /* See All Logic if needed */ }) {
+                                    Text("See All")
+                                }
+                            }
+                        }
+                        
+                        if (reviews.isEmpty()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(24.dp)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("No reviews yet")
+                                    Text("Be the first to share your opinion!", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // My Review (if exists)
+                 if (!isEditor && userReview != null) {
+                    item {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                             Text(
+                                text = "Your Review",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                             UserReviewCard(
+                                review = userReview!!,
+                                onEdit = { showReviewDialog = true },
+                                onDelete = { viewModel.deleteMyReview(gameId) }
+                            )
+                        }
+                    }
+                }
+
+                items(reviews) { review ->
+                    // Filter out current user review from the general list to avoid duplication if we wanted
+                    // But here we just show all. 
+                    ReviewItem(
+                        review = review,
+                        isCurrentUser = review.userId == currentUserId
+                    )
+                }
             }
         }
     }
 
-    // Review Dialog
+    // DIALOGS
     if (showReviewDialog) {
         AddReviewDialog(
             existingReview = userReview,
@@ -214,12 +299,11 @@ fun GameDetailScreen(
         )
     }
     
-    // Delete Game Confirmation
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete Game") },
-            text = { Text("Are you sure you want to delete \"${game!!.title}\"? This action cannot be undone.") },
+            title = { Text("Delete Game?") },
+            text = { Text("This action cannot be undone. Are you sure you want to remove this game from the library?") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -241,136 +325,19 @@ fun GameDetailScreen(
 }
 
 @Composable
-fun RatingStatsCard(
-    averageRating: Double,
-    ratingCount: Int
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+fun InfoChip(icon: ImageVector, text: String) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.padding(end = 4.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (ratingCount > 0) {
-                // Big average rating display
-                Text(
-                    text = String.format("%.1f", averageRating),
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFFFB800)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                // Star display
-                StarRatingDisplay(rating = averageRating, starSize = 32)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "$ratingCount ${if (ratingCount == 1) "review" else "reviews"}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Text(
-                    text = "No ratings yet",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                StarRatingDisplay(rating = 0.0, starSize = 32)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Be the first to rate!",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun StarRatingDisplay(
-    rating: Double,
-    maxStars: Int = 5,
-    starSize: Int = 24
-) {
-    val filledStars = rating.toInt()
-    val hasHalfStar = (rating - filledStars) >= 0.5
-    
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        repeat(maxStars) { index ->
-            val starColor = when {
-                index < filledStars -> Color(0xFFFFB800)
-                index == filledStars && hasHalfStar -> Color(0xFFFFB800).copy(alpha = 0.5f)
-                else -> Color.Gray.copy(alpha = 0.3f)
-            }
-            Icon(
-                imageVector = Icons.Filled.Star,
-                contentDescription = null,
-                tint = starColor,
-                modifier = Modifier.size(starSize.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun InteractiveStarRating(
-    currentRating: Int,
-    onRatingChanged: (Int) -> Unit,
-    starSize: Int = 40
-) {
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        repeat(5) { index ->
-            val starNumber = index + 1
-            Icon(
-                imageVector = if (starNumber <= currentRating) 
-                    Icons.Filled.Star 
-                else 
-                    Icons.Outlined.StarOutline,
-                contentDescription = "$starNumber stars",
-                tint = if (starNumber <= currentRating) 
-                    Color(0xFFFFB800) 
-                else 
-                    Color.Gray.copy(alpha = 0.5f),
-                modifier = Modifier
-                    .size(starSize.dp)
-                    .clickable { onRatingChanged(starNumber) }
-                    .padding(4.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun InfoRow(label: String, value: String) {
-    if (value.isNotBlank()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            Text(
-                text = "$label: ",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(text, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -381,142 +348,104 @@ fun UserReviewCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFFB800).copy(alpha = 0.1f)
-        ),
-        border = CardDefaults.outlinedCardBorder()
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        )
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    StarRatingDisplay(rating = review.rating.toDouble(), starSize = 20)
+                    repeat(5) { index ->
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            tint = if (index < review.rating) Color(0xFFFFB800) else Color.Gray.copy(alpha = 0.3f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "${review.rating}/5",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp))
+                    IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp))
                     }
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(
-                            Icons.Default.Delete, 
-                            contentDescription = "Delete",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
             if (review.comment.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = review.comment,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text(review.comment)
             }
         }
-    }
-    
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Review") },
-            text = { Text("Are you sure you want to delete your review?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDelete()
-                        showDeleteConfirm = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }
 
 @Composable
 fun ReviewItem(review: Review, isCurrentUser: Boolean) {
-    Card(
+    // Basic review item (reuse similar logic or simplify)
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isCurrentUser) 
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            else 
-                MaterialTheme.colorScheme.surfaceVariant
-        )
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                shape = CircleShape,
+                color = if (isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(32.dp)
             ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = review.userName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(review.userName, fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Star rating indicator
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFFFB800).copy(alpha = 0.2f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Filled.Star,
-                                contentDescription = null,
-                                tint = Color(0xFFFFB800),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${review.rating}",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                    repeat(5) { index ->
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            tint = if (index < review.rating) Color(0xFFFFB800) else Color.Gray.copy(alpha = 0.3f),
+                            modifier = Modifier.size(12.dp)
+                        )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = review.userName + if (isCurrentUser) " (You)" else "",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(review.timestamp)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(
-                    text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(review.timestamp)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (review.comment.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = review.comment,
-                    style = MaterialTheme.typography.bodyMedium
-                )
             }
         }
+        if (review.comment.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = review.comment,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 44.dp)
+            )
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 12.dp).padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -531,63 +460,36 @@ fun AddReviewDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existingReview != null) "Edit Your Review" else "Rate This Game") },
+        title = { Text(if (existingReview != null) "Edit Review" else "Rate Game") },
         text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Tap the stars to rate",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                    repeat(5) { index ->
+                        val starRating = index + 1
+                        Icon(
+                            imageVector = if (starRating <= rating) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                            contentDescription = null,
+                            tint = if (starRating <= rating) Color(0xFFFFB800) else Color.Gray,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clickable { rating = starRating }
+                                .padding(4.dp)
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                // Interactive Star Rating
-                InteractiveStarRating(
-                    currentRating = rating,
-                    onRatingChanged = { rating = it },
-                    starSize = 48
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Rating text
-                Text(
-                    text = when (rating) {
-                        1 -> "Poor"
-                        2 -> "Fair"
-                        3 -> "Good"
-                        4 -> "Very Good"
-                        5 -> "Excellent"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFFFB800)
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { comment = it },
-                    label = { Text("Comment (optional)") },
-                    placeholder = { Text("Share your thoughts...") },
+                    label = { Text("Write a review (optional)") },
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    maxLines = 5
+                    minLines = 3
                 )
             }
         },
         confirmButton = {
-            Button(
-                onClick = { onSubmit(rating, comment) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFB800)
-                )
-            ) {
-                Text("Submit", color = Color.Black)
+            Button(onClick = { onSubmit(rating, comment) }) {
+                Text("Submit")
             }
         },
         dismissButton = {
