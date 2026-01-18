@@ -21,24 +21,55 @@ import androidx.navigation.navArgument
 import com.isep.kotlinproject.model.UserRole
 import com.isep.kotlinproject.ui.auth.LoginScreen
 import com.isep.kotlinproject.ui.auth.SignupScreen
+import com.isep.kotlinproject.ui.editor.EditorDashboardScreen
 import com.isep.kotlinproject.ui.game.AddEditGameScreen
 import com.isep.kotlinproject.ui.game.GameDetailScreen
-import com.isep.kotlinproject.ui.game.GameListScreen
+import com.isep.kotlinproject.ui.main.MainScreen
 import com.isep.kotlinproject.ui.onboarding.OnboardingScreen
+import com.isep.kotlinproject.ui.profile.MyProfileScreen
+import com.isep.kotlinproject.ui.profile.PlayerProfileScreen
 import com.isep.kotlinproject.ui.profile.ProfileScreen
+import com.isep.kotlinproject.ui.profile.WishlistScreen
+import com.isep.kotlinproject.ui.social.ChatScreen
+import com.isep.kotlinproject.ui.social.ChatsListScreen
+import com.isep.kotlinproject.ui.social.FriendsScreen
 import com.isep.kotlinproject.ui.theme.KotlinProjectTheme
+import com.isep.kotlinproject.ui.trending.TrendingScreen
+import com.isep.kotlinproject.ui.users.PublicUserProfileScreen
+import com.isep.kotlinproject.util.withLocale
 import com.isep.kotlinproject.viewmodel.AuthViewModel
+import com.isep.kotlinproject.viewmodel.ChatViewModel
 import com.isep.kotlinproject.viewmodel.GameViewModel
+import com.isep.kotlinproject.viewmodel.StatsViewModel
+import com.isep.kotlinproject.viewmodel.UserViewModel
+import com.isep.kotlinproject.viewmodel.UsersViewModel
 
+/**
+ * Main activity containing the navigation graph for the entire application.
+ * Supports both Player and Editor user roles with role-specific screens.
+ */
 class MainActivity : ComponentActivity() {
+    
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase.withLocale())
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             KotlinProjectTheme {
                 val navController = rememberNavController()
+                
+                // ViewModels
                 val authViewModel: AuthViewModel = viewModel()
                 val gameViewModel: GameViewModel = viewModel()
+                val userViewModel: UserViewModel = viewModel()
+                val usersViewModel: UsersViewModel = viewModel()
+                val statsViewModel: StatsViewModel = viewModel()
+                val chatViewModel: ChatViewModel = viewModel()
+                
+                // State
                 val navigateDestination by authViewModel.navigateDestination.collectAsState()
                 val currentUser by authViewModel.user.collectAsState()
 
@@ -51,11 +82,11 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(currentUser) {
                     if (currentUser != null) {
                         val user = currentUser!!
-                        gameViewModel.setUserInfo(user.role, user.name)
+                        gameViewModel.setUserInfo(user.role, user.getDisplayNameOrLegacy())
                         
                         // Editors see only their games, Players see all games
                         if (user.role == UserRole.EDITOR) {
-                            gameViewModel.startListening(isEditor = true, editorId = user.id)
+                            gameViewModel.startListening(isEditor = true, editorId = user.uid)
                         } else {
                             gameViewModel.startListening(isEditor = false)
                         }
@@ -85,6 +116,10 @@ class MainActivity : ComponentActivity() {
                         startDestination = startDestination,
                         modifier = Modifier.padding(innerPadding)
                     ) {
+                        // =====================================================
+                        // ONBOARDING & AUTH
+                        // =====================================================
+                        
                         composable("onboarding") {
                             OnboardingScreen(
                                 onFinished = {
@@ -105,36 +140,56 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToSignup = { navController.navigate("signup") }
                             )
                         }
+                        
                         composable("signup") {
                             SignupScreen(
                                 viewModel = authViewModel,
                                 onNavigateToLogin = { navController.popBackStack() }
                             )
                         }
-                        composable("profile") {
-                            ProfileScreen(
-                                viewModel = authViewModel,
-                                onNavigateToLogin = {
-                                    navController.navigate("login") {
-                                        popUpTo("login") { inclusive = true }
-                                    }
+                        
+                        // =====================================================
+                        // MAIN SCREENS
+                        // =====================================================
+                        
+                        // Main screen with bottom navigation (Games + Users tabs)
+                        composable("game_list") {
+                            val userRole = currentUser?.role ?: UserRole.PLAYER
+                            MainScreen(
+                                gameViewModel = gameViewModel,
+                                usersViewModel = usersViewModel,
+                                userRole = userRole,
+                                onGameClick = { gameId -> 
+                                    navController.navigate("game_detail/$gameId") 
+                                },
+                                onAddGameClick = { navController.navigate("add_edit_game") },
+                                onProfileClick = { navController.navigate("profile") },
+                                onUserClick = { userId ->
+                                    navController.navigate("public_profile/$userId")
                                 }
                             )
                         }
                         
-                        // Game List - works for both Player and Editor
-                        composable("game_list") {
-                            val userRole = currentUser?.role ?: UserRole.PLAYER
-                            GameListScreen(
-                                viewModel = gameViewModel,
-                                userRole = userRole,
-                                onGameClick = { gameId -> navController.navigate("game_detail/$gameId") },
-                                onAddGameClick = { navController.navigate("add_edit_game") },
-                                onProfileClick = { navController.navigate("profile") }
+                        // Public User Profile (view only)
+                        composable(
+                            route = "public_profile/{userId}",
+                            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+                            PublicUserProfileScreen(
+                                userId = userId,
+                                viewModel = usersViewModel,
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToGame = { gameId ->
+                                    navController.navigate("game_detail/$gameId")
+                                },
+                                onNavigateToChat = { otherUserId, otherUserName ->
+                                    navController.navigate("chat/$otherUserId/$otherUserName")
+                                }
                             )
                         }
                         
-                        // Game Detail - works for both Player and Editor (with different actions)
+                        // Game Detail - works for both Player and Editor
                         composable(
                             route = "game_detail/{gameId}",
                             arguments = listOf(navArgument("gameId") { type = NavType.StringType })
@@ -144,13 +199,14 @@ class MainActivity : ComponentActivity() {
                             GameDetailScreen(
                                 gameId = gameId,
                                 viewModel = gameViewModel,
+                                userViewModel = userViewModel,
                                 userRole = userRole,
                                 onEditClick = { id -> navController.navigate("add_edit_game?gameId=$id") },
                                 onBack = { navController.popBackStack() }
                             )
                         }
                         
-                        // Add/Edit Game - Editor only (but we check role in the screen)
+                        // Add/Edit Game - Editor only
                         composable(
                             route = "add_edit_game?gameId={gameId}",
                             arguments = listOf(navArgument("gameId") { 
@@ -164,6 +220,185 @@ class MainActivity : ComponentActivity() {
                                 viewModel = gameViewModel,
                                 onBack = { navController.popBackStack() }
                             )
+                        }
+                        
+                        // =====================================================
+                        // PROFILE SCREENS
+                        // =====================================================
+                        
+                        // My Profile - full version with all user data
+                        composable("profile") {
+                            MyProfileScreen(
+                                authViewModel = authViewModel,
+                                userViewModel = userViewModel,
+                                onNavigateToGame = { gameId ->
+                                    navController.navigate("game_detail/$gameId")
+                                },
+                                onNavigateToSettings = { navController.navigate("settings") },
+                                onNavigateToFriends = { navController.navigate("friends") },
+                                onNavigateBack = { navController.popBackStack() },
+                                onLogout = {
+                                    navController.navigate("login") {
+                                        popUpTo("game_list") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+                        
+                        // Player Profile (full version with tabs)
+                        composable(
+                            route = "player_profile?userId={userId}",
+                            arguments = listOf(navArgument("userId") {
+                                type = NavType.StringType
+                                nullable = true
+                            })
+                        ) { backStackEntry ->
+                            val userId = backStackEntry.arguments?.getString("userId")
+                            PlayerProfileScreen(
+                                userId = userId,
+                                viewModel = userViewModel,
+                                onNavigateToGame = { gameId -> 
+                                    navController.navigate("game_detail/$gameId") 
+                                },
+                                onNavigateToUser = { uid -> 
+                                    navController.navigate("player_profile?userId=$uid") 
+                                },
+                                onNavigateToSettings = { navController.navigate("settings") },
+                                onNavigateBack = { navController.popBackStack() },
+                                onLogout = {
+                                    authViewModel.logout()
+                                    navController.navigate("login") {
+                                        popUpTo("game_list") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+                        
+                        // Wishlist
+                        composable("wishlist") {
+                            WishlistScreen(
+                                viewModel = userViewModel,
+                                onNavigateToGame = { gameId -> 
+                                    navController.navigate("game_detail/$gameId") 
+                                },
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        
+                        // =====================================================
+                        // SOCIAL SCREENS
+                        // =====================================================
+                        
+                        // Friends
+                        composable("friends") {
+                            FriendsScreen(
+                                viewModel = userViewModel,
+                                onNavigateToProfile = { userId -> 
+                                    navController.navigate("player_profile?userId=$userId") 
+                                },
+                                onNavigateToChat = { userId, userName ->
+                                    navController.navigate("chat/$userId/$userName")
+                                },
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        
+                        // Chats List
+                        composable("chats") {
+                            ChatsListScreen(
+                                viewModel = chatViewModel,
+                                onNavigateToChat = { chatId ->
+                                    navController.navigate("chat_by_id/$chatId")
+                                },
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        
+                        // Chat by User ID and Name
+                        composable(
+                            route = "chat/{userId}/{userName}",
+                            arguments = listOf(
+                                navArgument("userId") { type = NavType.StringType },
+                                navArgument("userName") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+                            val userName = backStackEntry.arguments?.getString("userName") ?: "User"
+                            ChatScreen(
+                                viewModel = chatViewModel,
+                                otherUserId = userId,
+                                otherUserName = userName,
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToProfile = { uid ->
+                                    navController.navigate("player_profile?userId=$uid")
+                                }
+                            )
+                        }
+                        
+                        // Chat by Chat ID
+                        composable(
+                            route = "chat_by_id/{chatId}",
+                            arguments = listOf(navArgument("chatId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val chatId = backStackEntry.arguments?.getString("chatId") ?: return@composable
+                            // For chat by ID, we need to extract user info from the chat
+                            val otherUserId = chatViewModel.getOtherParticipantId() ?: ""
+                            val otherUserName = chatViewModel.getOtherParticipantName()
+                            
+                            LaunchedEffect(chatId) {
+                                chatViewModel.openChatById(chatId)
+                            }
+                            
+                            ChatScreen(
+                                viewModel = chatViewModel,
+                                otherUserId = otherUserId,
+                                otherUserName = otherUserName,
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToProfile = { uid ->
+                                    navController.navigate("player_profile?userId=$uid")
+                                }
+                            )
+                        }
+                        
+                        // =====================================================
+                        // EDITOR SCREENS
+                        // =====================================================
+                        
+                        // Editor Statistics Dashboard
+                        composable("editor_stats") {
+                            val games by gameViewModel.games.collectAsState()
+                            EditorDashboardScreen(
+                                viewModel = statsViewModel,
+                                editorGames = games,
+                                onNavigateToGame = { gameId -> 
+                                    navController.navigate("game_detail/$gameId") 
+                                },
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        
+                        // =====================================================
+                        // TRENDING & DISCOVERY
+                        // =====================================================
+                        
+                        // Trending Games
+                        composable("trending") {
+                            TrendingScreen(
+                                viewModel = statsViewModel,
+                                onNavigateToGame = { gameId -> 
+                                    navController.navigate("game_detail/$gameId") 
+                                },
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        
+                        // =====================================================
+                        // SETTINGS
+                        // =====================================================
+                        
+                        composable("settings") {
+                            // Settings screen - placeholder for now
+                            // Can implement SettingsScreen with locale selection
                         }
                     }
                 }

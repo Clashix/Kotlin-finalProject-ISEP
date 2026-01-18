@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.isep.kotlinproject.model.User
@@ -13,6 +14,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+/**
+ * ViewModel for authentication operations.
+ * Handles login, signup, Google Sign-In, and session management.
+ */
 class AuthViewModel : ViewModel() {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
@@ -39,6 +44,9 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Login with email and password
+     */
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -56,6 +64,9 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Sign up with email and password
+     */
     fun signup(name: String, email: String, password: String, role: UserRole) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -63,11 +74,13 @@ class AuthViewModel : ViewModel() {
             try {
                 val authResult = auth.createUserWithEmailAndPassword(email, password).await()
                 authResult.user?.let { firebaseUser ->
-                    val newUser = User(
-                        id = firebaseUser.uid,
-                        name = name,
+                    val newUser = User.createNew(
+                        uid = firebaseUser.uid,
+                        displayName = name,
                         email = email,
-                        role = role
+                        role = role,
+                        photoURL = firebaseUser.photoUrl?.toString() ?: "",
+                        locale = "en"
                     )
                     saveUserToFirestore(newUser)
                 }
@@ -79,16 +92,77 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Sign in with Google credential
+     */
+    fun signInWithGoogle(idToken: String, role: UserRole? = null) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val credential = GoogleAuthProvider.getCredential(idToken, null)
+                val authResult = auth.signInWithCredential(credential).await()
+                authResult.user?.let { firebaseUser ->
+                    // Check if user already exists
+                    val existingDoc = db.collection("users").document(firebaseUser.uid).get().await()
+                    
+                    if (existingDoc.exists()) {
+                        // Existing user - fetch data
+                        fetchUserData(firebaseUser.uid)
+                    } else {
+                        // New user - create document
+                        val newUser = User.createNew(
+                            uid = firebaseUser.uid,
+                            displayName = firebaseUser.displayName ?: "User",
+                            email = firebaseUser.email ?: "",
+                            role = role ?: UserRole.PLAYER,
+                            photoURL = firebaseUser.photoUrl?.toString() ?: "",
+                            locale = "en"
+                        )
+                        saveUserToFirestore(newUser)
+                    }
+                }
+            } catch (e: Exception) {
+                _error.value = "Google sign-in failed: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Clear navigation destination
+     */
     fun clearNavigation() {
         _navigateDestination.value = null
     }
 
+    /**
+     * Clear error message
+     */
+    fun clearError() {
+        _error.value = null
+    }
+    
+    /**
+     * Set error message (for external error handling)
+     */
+    fun setError(message: String) {
+        _error.value = message
+    }
+
+    /**
+     * Logout current user
+     */
     fun logout() {
         auth.signOut()
         _user.value = null
         _navigateDestination.value = null
     }
 
+    /**
+     * Upload profile image
+     */
     fun uploadProfileImage(uri: Uri) {
         val currentUser = auth.currentUser
         if (currentUser == null) return
@@ -103,9 +177,14 @@ class AuthViewModel : ViewModel() {
                 val downloadUrl = storageRef.downloadUrl.await().toString()
                 
                 db.collection("users").document(userId)
-                    .update("profileImageUrl", downloadUrl).await()
+                    .update(
+                        mapOf(
+                            "photoURL" to downloadUrl,
+                            "profileImageUrl" to downloadUrl // Keep legacy field
+                        )
+                    ).await()
                 
-                _user.value = _user.value?.copy(profileImageUrl = downloadUrl)
+                _user.value = _user.value?.copy(photoURL = downloadUrl)
             } catch (e: Exception) {
                 _error.value = "Upload failed: ${e.message}"
             } finally {
@@ -114,31 +193,129 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Update user display name
+     */
+    fun updateDisplayName(name: String) {
+        val userId = auth.currentUser?.uid ?: return
+        
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                db.collection("users").document(userId)
+                    .update(
+                        mapOf(
+                            "displayName" to name,
+                            "name" to name // Keep legacy field
+                        )
+                    ).await()
+                
+                _user.value = _user.value?.copy(displayName = name, name = name)
+            } catch (e: Exception) {
+                _error.value = "Update failed: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Update user locale preference
+     */
+    fun updateLocale(locale: String) {
+        val userId = auth.currentUser?.uid ?: return
+        
+        viewModelScope.launch {
+            try {
+                db.collection("users").document(userId)
+                    .update("locale", locale)
+                    .await()
+                
+                _user.value = _user.value?.copy(locale = locale)
+            } catch (e: Exception) {
+                _error.value = "Update locale failed: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Save user document to Firestore
+     */
     private suspend fun saveUserToFirestore(user: User) {
         try {
-            db.collection("users").document(user.id).set(user).await()
+            val userData = mapOf(
+                "uid" to user.uid,
+                "displayName" to user.displayName,
+                "name" to user.displayName, // Legacy field
+                "email" to user.email,
+                "photoURL" to user.photoURL,
+                "profileImageUrl" to user.photoURL, // Legacy field
+                "role" to user.role.name,
+                "locale" to user.locale,
+                "friends" to user.friends,
+                "likedGames" to user.likedGames,
+                "playedGames" to user.playedGames,
+                "wishlist" to user.wishlist,
+                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+            
+            db.collection("users").document(user.uid).set(userData).await()
             _user.value = user
             routeUser(user)
         } catch (e: Exception) {
             _error.value = "Failed to save user data: ${e.message}"
-            // If saving to Firestore fails, we might want to consider deleting the auth user
-            // to keep states in sync, but for now we just report the error.
         }
     }
 
+    /**
+     * Fetch user data from Firestore
+     */
     private fun fetchUserData(userId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 val document = db.collection("users").document(userId).get().await()
-                val fetchedUser = document.toObject(User::class.java)
-                if (fetchedUser != null) {
+                
+                if (document.exists()) {
+                    val data = document.data ?: return@launch
+                    
+                    // Parse role from string
+                    val roleString = data["role"] as? String ?: "PLAYER"
+                    val role = try {
+                        UserRole.valueOf(roleString.uppercase())
+                    } catch (e: Exception) {
+                        UserRole.PLAYER
+                    }
+                    
+                    @Suppress("UNCHECKED_CAST")
+                    val fetchedUser = User(
+                        uid = userId,
+                        displayName = data["displayName"] as? String 
+                            ?: data["name"] as? String 
+                            ?: "User",
+                        displayNameLower = (data["displayNameLower"] as? String) 
+                            ?: (data["displayName"] as? String)?.lowercase() 
+                            ?: "",
+                        email = data["email"] as? String ?: "",
+                        photoURL = data["photoURL"] as? String 
+                            ?: data["profileImageUrl"] as? String 
+                            ?: "",
+                        bio = data["bio"] as? String ?: "",
+                        _role = roleString.lowercase(),
+                        locale = data["locale"] as? String ?: "en",
+                        friends = data["friends"] as? List<String> ?: emptyList(),
+                        likedGames = data["likedGames"] as? List<String> ?: emptyList(),
+                        playedGames = data["playedGames"] as? List<String> ?: emptyList(),
+                        wishlist = data["wishlist"] as? List<String> ?: emptyList(),
+                        wishlistSteamAppIds = data["wishlistSteamAppIds"] as? List<String> ?: emptyList(),
+                        name = data["name"] as? String ?: ""
+                    )
+                    
                     _user.value = fetchedUser
                     routeUser(fetchedUser)
                 } else {
-                     // Handle case where user exists in Auth but not Firestore (edge case)
-                     _error.value = "User profile not found."
-                     auth.signOut()
+                    _error.value = "User profile not found."
+                    auth.signOut()
                 }
             } catch (e: Exception) {
                 _error.value = "Failed to fetch user data: ${e.message}"
@@ -148,6 +325,9 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Route user to appropriate destination based on role
+     */
     private fun routeUser(user: User) {
         if (user.role == UserRole.PLAYER) {
             _navigateDestination.value = "player_home"

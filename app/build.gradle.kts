@@ -70,4 +70,10 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.storage)
     implementation(libs.firebase.functions)
+    
+    // Google Auth
+    implementation(libs.google.auth)
+    
+    // MPAndroidChart for statistics
+    implementation(libs.mpandroidchart)
 }

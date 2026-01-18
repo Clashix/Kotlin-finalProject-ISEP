@@ -9,12 +9,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.BookmarkAdded
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
@@ -33,6 +39,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.isep.kotlinproject.model.Review
 import com.isep.kotlinproject.model.UserRole
 import com.isep.kotlinproject.viewmodel.GameViewModel
+import com.isep.kotlinproject.viewmodel.UserViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -41,6 +48,7 @@ import java.util.*
 fun GameDetailScreen(
     gameId: String,
     viewModel: GameViewModel,
+    userViewModel: UserViewModel,
     userRole: UserRole,
     onEditClick: (String) -> Unit,
     onBack: () -> Unit
@@ -49,12 +57,44 @@ fun GameDetailScreen(
     val reviews by viewModel.reviews.collectAsState()
     val userReview by viewModel.userReview.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val currentUser by userViewModel.currentUser.collectAsState()
+    val successMessage by userViewModel.successMessage.collectAsState()
+    val error by userViewModel.error.collectAsState()
     var showReviewDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    
+    val snackbarHostState = remember { SnackbarHostState() }
     
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     val isEditor = userRole == UserRole.EDITOR
     val isOwner = isEditor && game?.editorId == currentUserId
+    
+    // Game list states
+    val isLiked = currentUser?.likedGames?.contains(gameId) == true
+    val isPlayed = currentUser?.playedGames?.contains(gameId) == true
+    val isInWishlist = currentUser?.wishlist?.contains(gameId) == true
+    
+    // Show success message in Snackbar
+    LaunchedEffect(successMessage) {
+        successMessage?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Short
+            )
+            userViewModel.clearSuccessMessage()
+        }
+    }
+    
+    // Show error message in Snackbar
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Short
+            )
+            userViewModel.clearError()
+        }
+    }
 
     LaunchedEffect(gameId) {
         viewModel.selectGame(gameId)
@@ -74,6 +114,7 @@ fun GameDetailScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (!isEditor) {
                 ExtendedFloatingActionButton(
@@ -186,12 +227,52 @@ fun GameDetailScreen(
                     Row(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
-                            .padding(bottom = 24.dp),
+                            .padding(bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         InfoChip(icon = Icons.Default.Gamepad, text = game!!.genre)
                         InfoChip(icon = Icons.Default.Code, text = game!!.developer)
                         InfoChip(icon = Icons.Default.CalendarToday, text = game!!.releaseDate.take(4))
+                    }
+                }
+                
+                // ACTION BUTTONS (Like, Played, Wishlist) - Players only
+                if (!isEditor) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 24.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            // Like button
+                            ActionButton(
+                                icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                label = if (isLiked) "Liked" else "Like",
+                                isActive = isLiked,
+                                activeColor = Color(0xFFE91E63),
+                                onClick = { userViewModel.toggleLike(gameId) }
+                            )
+                            
+                            // Played button
+                            ActionButton(
+                                icon = if (isPlayed) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
+                                label = if (isPlayed) "Played" else "Mark Played",
+                                isActive = isPlayed,
+                                activeColor = Color(0xFF4CAF50),
+                                onClick = { userViewModel.togglePlayed(gameId) }
+                            )
+                            
+                            // Wishlist button
+                            ActionButton(
+                                icon = if (isInWishlist) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd,
+                                label = if (isInWishlist) "In Wishlist" else "Wishlist",
+                                isActive = isInWishlist,
+                                activeColor = Color(0xFF2196F3),
+                                onClick = { userViewModel.toggleWishlist(gameId) }
+                            )
+                        }
                     }
                 }
 
@@ -339,6 +420,41 @@ fun InfoChip(icon: ImageVector, text: String) {
             Spacer(modifier = Modifier.width(6.dp))
             Text(text, style = MaterialTheme.typography.labelLarge)
         }
+    }
+}
+
+@Composable
+private fun ActionButton(
+    icon: ImageVector,
+    label: String,
+    isActive: Boolean,
+    activeColor: Color,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = if (isActive) activeColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = if (isActive) activeColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isActive) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

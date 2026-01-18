@@ -12,6 +12,8 @@ firebaseBom = "34.6.0"
 navVersion = "2.8.3"
 coilVersion = "2.7.0"
 retrofitVersion = "2.9.0"
+mpandroidchartVersion = "v3.1.0"
+googleAuthVersion = "21.0.0"
 
 [libraries]
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navVersion" }
@@ -38,6 +40,8 @@ firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
 firebase-functions = { group = "com.google.firebase", name = "firebase-functions" }
+mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchartVersion" }
+google-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "googleAuthVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -10,4 +10,15 @@ interface SteamApiService {
         @Query("l") language: String = "english",
         @Query("cc") countryCode: String = "US"
     ): SteamStoreSearchResponse
+    
+    /**
+     * Get app details by Steam App ID
+     * Returns a map with appId as key
+     */
+    @GET("api/appdetails")
+    suspend fun getAppDetails(
+        @Query("appids") appId: String,
+        @Query("l") language: String = "english",
+        @Query("cc") countryCode: String = "US"
+    ): Map<String, SteamAppDetailsResponse>
 }

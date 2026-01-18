@@ -85,7 +85,7 @@ fun ProfileScreen(
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(if (user?.profileImageUrl.isNullOrEmpty()) "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" else user?.profileImageUrl)
+                            .data(if (user?.photoURL.isNullOrEmpty()) "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" else user?.photoURL)
                             .crossfade(true)
                             .build(),
                         contentDescription = "Profile Picture",
