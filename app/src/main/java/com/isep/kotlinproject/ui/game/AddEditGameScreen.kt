@@ -29,8 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import com.isep.kotlinproject.R
 import com.isep.kotlinproject.api.SteamStoreItem
 import com.isep.kotlinproject.model.Game
 import com.isep.kotlinproject.ui.components.AppDatePickerField
@@ -123,7 +125,7 @@ fun AddEditGameScreen(
     if (showGenreDialog) {
         AlertDialog(
             onDismissRequest = { showGenreDialog = false },
-            title = { Text("Select Categories") },
+            title = { Text(stringResource(R.string.select_categories)) },
             text = {
                 var newCustomGenre by remember { mutableStateOf("") }
                 Column(
@@ -132,7 +134,7 @@ fun AddEditGameScreen(
                         .heightIn(max = 400.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    Text("Popular Genres", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.popular_genres), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(8.dp))
                     @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(
@@ -159,7 +161,7 @@ fun AddEditGameScreen(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    Text("Custom Category", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.custom_category), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(top = 8.dp)
@@ -167,7 +169,7 @@ fun AddEditGameScreen(
                         OutlinedTextField(
                             value = newCustomGenre,
                             onValueChange = { newCustomGenre = it },
-                            label = { Text("Add other...") },
+                            label = { Text(stringResource(R.string.add_other)) },
                             modifier = Modifier.weight(1f),
                             singleLine = true
                         )
@@ -179,14 +181,14 @@ fun AddEditGameScreen(
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add")
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_game))
                         }
                     }
                 }
             },
             confirmButton = {
                 Button(onClick = { showGenreDialog = false }) {
-                    Text("Done")
+                    Text(stringResource(R.string.done))
                 }
             }
         )
@@ -195,10 +197,10 @@ fun AddEditGameScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (gameId == null) "New Game" else "Edit Game") },
+                title = { Text(if (gameId == null) stringResource(R.string.add_game) else stringResource(R.string.edit_game)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -206,7 +208,7 @@ fun AddEditGameScreen(
                         TextButton(onClick = { showSteamSearch = true }) {
                             Icon(Icons.Default.Search, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
-                            Text("Import from Steam")
+                            Text(stringResource(R.string.import_from_steam))
                         }
                     }
                 },
@@ -242,14 +244,14 @@ fun AddEditGameScreen(
                         if (imageUri != null) {
                             AsyncImage(
                                 model = imageUri,
-                                contentDescription = "Selected Game Image",
+                                contentDescription = stringResource(R.string.cd_selected_image),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
                         } else if (existingImageUrl.isNotEmpty()) {
                             AsyncImage(
                                 model = existingImageUrl,
-                                contentDescription = "Existing Game Image",
+                                contentDescription = stringResource(R.string.cd_existing_image),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -262,14 +264,14 @@ fun AddEditGameScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(Modifier.height(8.dp))
-                                Text("Tap to add cover image", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.tap_to_add_cover), style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
                 }
 
                 Text(
-                    "Game Details", 
+                    stringResource(R.string.game_details), 
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -277,16 +279,16 @@ fun AddEditGameScreen(
                 AppTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = "Title",
+                    label = stringResource(R.string.game_title),
                     leadingIcon = Icons.Default.Title,
-                    helpText = "Enter the official name of the game.",
-                    errorMessage = if (isSubmitted && !isTitleValid) "Title is required" else null
+                    helpText = stringResource(R.string.title_help),
+                    errorMessage = if (isSubmitted && !isTitleValid) stringResource(R.string.error) else null
                 )
 
                 // Category / Genre Section
                 Column {
                     Text(
-                        text = "Categories", 
+                        text = stringResource(R.string.categories), 
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -300,7 +302,7 @@ fun AddEditGameScreen(
                         Column(modifier = Modifier.padding(12.dp)) {
                              if (selectedGenres.isEmpty()) {
                                 Text(
-                                    "Tap to select categories...",
+                                    stringResource(R.string.select_categories),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             } else {
@@ -317,7 +319,7 @@ fun AddEditGameScreen(
                                             trailingIcon = {
                                                 Icon(
                                                     Icons.Default.Close,
-                                                    contentDescription = "Remove",
+                                                    contentDescription = stringResource(R.string.delete),
                                                     modifier = Modifier.size(16.dp).clickable { selectedGenres = selectedGenres - genre }
                                                 )
                                             }
@@ -329,7 +331,7 @@ fun AddEditGameScreen(
                     }
                     if (isSubmitted && !isGenreValid) {
                         Text(
-                            text = "At least one category is required",
+                            text = stringResource(R.string.error_category_required),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(start = 16.dp, top = 4.dp)
@@ -340,26 +342,26 @@ fun AddEditGameScreen(
                 AppTextField(
                     value = developer,
                     onValueChange = { developer = it },
-                    label = "Developer",
+                    label = stringResource(R.string.developer),
                     leadingIcon = Icons.Default.Person,
-                    helpText = "Who created this game?"
+                    helpText = stringResource(R.string.developer_help)
                 )
 
                 AppDatePickerField(
                     value = releaseDate,
                     onDateSelected = { releaseDate = it },
-                    label = "Release Date",
-                    helpText = "When was the game first released?",
-                    errorMessage = if (isSubmitted && !isDateValid) "Date is required" else null
+                    label = stringResource(R.string.release_date),
+                    helpText = stringResource(R.string.release_date_help),
+                    errorMessage = if (isSubmitted && !isDateValid) stringResource(R.string.error) else null
                 )
 
                 AppTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = "Description",
+                    label = stringResource(R.string.game_description),
                     minLines = 3,
                     singleLine = false,
-                    helpText = "Brief summary of the game's plot or gameplay."
+                    helpText = stringResource(R.string.description_help)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -396,7 +398,7 @@ fun AddEditGameScreen(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text(if (gameId == null) "Create Game" else "Save Changes")
+                    Text(if (gameId == null) stringResource(R.string.add_game) else stringResource(R.string.save))
                 }
             }
         }
@@ -423,7 +425,7 @@ fun SteamSearchDialog(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "Import from Steam", 
+                    stringResource(R.string.import_from_steam), 
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -435,7 +437,7 @@ fun SteamSearchDialog(
                         query = it
                         viewModel.searchSteamGames(it)
                     },
-                    label = { Text("Search by name...") },
+                    label = { Text(stringResource(R.string.search_by_name)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
@@ -488,7 +490,7 @@ fun SteamSearchDialog(
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.End)
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         }

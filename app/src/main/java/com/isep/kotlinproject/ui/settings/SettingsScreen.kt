@@ -1,5 +1,8 @@
 package com.isep.kotlinproject.ui.settings
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,12 +16,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isep.kotlinproject.R
 import com.isep.kotlinproject.model.ThemePreference
+import com.isep.kotlinproject.util.LocaleManager
 import com.isep.kotlinproject.viewmodel.SettingsViewModel
 
 /**
@@ -31,7 +36,10 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     val themePreference by viewModel.themePreference.collectAsState()
+    val currentLocale by viewModel.currentLocale.collectAsState()
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     
     Scaffold(
         topBar = {
@@ -71,14 +79,17 @@ fun SettingsScreen(
             
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             
-            // Language Section (placeholder for future implementation)
+            // Language Section
             SettingsSectionHeader(title = stringResource(R.string.language))
             
             SettingsItem(
                 icon = Icons.Default.Language,
                 title = stringResource(R.string.language),
-                subtitle = stringResource(R.string.language_en),
-                onClick = { /* TODO: Language selection */ }
+                subtitle = when (currentLocale) {
+                    "fr" -> stringResource(R.string.language_fr)
+                    else -> stringResource(R.string.language_en)
+                },
+                onClick = { showLanguageDialog = true }
             )
             
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -118,6 +129,20 @@ fun SettingsScreen(
                 showThemeDialog = false
             },
             onDismiss = { showThemeDialog = false }
+        )
+    }
+
+    // Language selection dialog
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            currentLocale = currentLocale,
+            onLocaleSelected = { locale ->
+                viewModel.updateLocale(locale)
+                showLanguageDialog = false
+                // Recreate activity to apply language change
+                context.findActivity()?.recreate()
+            },
+            onDismiss = { showLanguageDialog = false }
         )
     }
 }
@@ -218,6 +243,70 @@ private fun ThemeSelectionDialog(
 }
 
 @Composable
+private fun LanguageSelectionDialog(
+    currentLocale: String,
+    onLocaleSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.language)) },
+        text = {
+            Column(modifier = Modifier.selectableGroup()) {
+                LanguageOption(
+                    title = stringResource(R.string.language_en),
+                    localeCode = "en",
+                    selected = currentLocale == "en",
+                    onClick = { onLocaleSelected("en") }
+                )
+                LanguageOption(
+                    title = stringResource(R.string.language_fr),
+                    localeCode = "fr",
+                    selected = currentLocale == "fr",
+                    onClick = { onLocaleSelected("fr") }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.close))
+            }
+        }
+    )
+}
+
+@Composable
+private fun LanguageOption(
+    title: String,
+    localeCode: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.RadioButton
+            )
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Flag emoji or icon could go here, for now just text
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f)
+        )
+        RadioButton(
+            selected = selected,
+            onClick = null // handled by Row's selectable
+        )
+    }
+}
+
+@Composable
 private fun ThemeOption(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -252,4 +341,10 @@ private fun ThemeOption(
             onClick = null // handled by Row's selectable
         )
     }
+}
+
+private fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

@@ -15,9 +15,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import com.isep.kotlinproject.R
 import java.time.format.DateTimeFormatter
 
 /**
@@ -51,12 +53,12 @@ fun AppTextField(
             } else null,
             trailingIcon = {
                 if (errorMessage != null) {
-                    Icon(Icons.Default.Error, contentDescription = "Error", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Default.Error, contentDescription = stringResource(R.string.error), tint = MaterialTheme.colorScheme.error)
                 } else if (helpText != null) {
                     IconButton(onClick = { showHelpDialog = true }) {
                         Icon(
                             Icons.Default.HelpOutline, 
-                            contentDescription = "Help",
+                            contentDescription = stringResource(R.string.help),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -73,11 +75,11 @@ fun AppTextField(
     if (showHelpDialog && helpText != null) {
         AlertDialog(
             onDismissRequest = { showHelpDialog = false },
-            title = { Text("Information") },
+            title = { Text(stringResource(R.string.information)) },
             text = { Text(helpText) },
             confirmButton = {
                 TextButton(onClick = { showHelpDialog = false }) {
-                    Text("Got it")
+                    Text(stringResource(R.string.got_it))
                 }
             }
         )
@@ -124,13 +126,13 @@ fun AppDatePickerField(
             modifier = Modifier.fillMaxWidth(),
             readOnly = true,
             isError = errorMessage != null,
-            leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = "Select Date") },
+            leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = stringResource(R.string.select_date)) },
             trailingIcon = {
                  if (helpText != null) {
                     IconButton(onClick = { showHelpDialog = true }) {
                         Icon(
                             Icons.Default.HelpOutline, 
-                            contentDescription = "Help",
+                            contentDescription = stringResource(R.string.help),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -163,7 +165,7 @@ fun AppDatePickerField(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                  TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         ) {
@@ -174,11 +176,11 @@ fun AppDatePickerField(
      if (showHelpDialog && helpText != null) {
         AlertDialog(
             onDismissRequest = { showHelpDialog = false },
-            title = { Text("Date Info") },
+            title = { Text(stringResource(R.string.date_info)) },
             text = { Text(helpText) },
             confirmButton = {
                 TextButton(onClick = { showHelpDialog = false }) {
-                    Text("Ok")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
@@ -192,7 +194,7 @@ fun AppDatePickerField(
 fun AppPasswordInput(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String = "Password",
+    label: String = stringResource(R.string.password),
     modifier: Modifier = Modifier,
     helpText: String? = null,
     errorMessage: String? = null
@@ -213,7 +215,7 @@ fun AppPasswordInput(
             trailingIcon = {
                 IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     val icon = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                    Icon(icon, contentDescription = "Toggle Password Visibility")
+                    Icon(icon, contentDescription = stringResource(R.string.toggle_password_visibility))
                 }
             },
             supportingText = {

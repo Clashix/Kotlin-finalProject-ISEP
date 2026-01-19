@@ -23,10 +23,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.isep.kotlinproject.R
 import com.isep.kotlinproject.model.Game
 import com.isep.kotlinproject.model.UserRole
 import com.isep.kotlinproject.repository.GameSortOption
@@ -55,7 +57,7 @@ fun GameListScreen(
             TopAppBar(
                 title = { 
                     Text(
-                        if (isEditor) "Editor Dashboard" else "Discover",
+                        if (isEditor) stringResource(R.string.editor_dashboard) else stringResource(R.string.nav_discover),
                         fontWeight = FontWeight.Bold
                     ) 
                 },
@@ -63,7 +65,7 @@ fun GameListScreen(
                     // Sort button with dropdown
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Sort")
+                            Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.sort_by))
                         }
                         DropdownMenu(
                             expanded = showSortMenu,
@@ -103,7 +105,7 @@ fun GameListScreen(
                             color = MaterialTheme.colorScheme.secondaryContainer,
                             modifier = Modifier.size(32.dp)
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = "Profile", modifier = Modifier.padding(4.dp))
+                            Icon(Icons.Default.Person, contentDescription = stringResource(R.string.profile), modifier = Modifier.padding(4.dp))
                         }
                     }
                 },
@@ -120,7 +122,7 @@ fun GameListScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Game")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_game))
                 }
             }
         }
@@ -136,7 +138,7 @@ fun GameListScreen(
                 onSearch = { },
                 active = false,
                 onActiveChange = {},
-                placeholder = { Text("Search your library...") },
+                placeholder = { Text(stringResource(R.string.search_games)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,13 +168,13 @@ fun GameListScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (isEditor) "Your library is empty." else "No games found.",
+                            text = if (isEditor) stringResource(R.string.your_library_empty) else stringResource(R.string.no_results),
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (isEditor) {
                             TextButton(onClick = onAddGameClick) {
-                                Text("Add your first game")
+                                Text(stringResource(R.string.add_first_game))
                             }
                         }
                     }
@@ -186,7 +188,7 @@ fun GameListScreen(
                     if (!isEditor && searchQuery.isEmpty() && allGames.size > 3) {
                         item {
                             Text(
-                                text = "Top Rated",
+                                text = stringResource(R.string.top_rated),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 12.dp)
@@ -211,7 +213,7 @@ fun GameListScreen(
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "All Games",
+                                text = stringResource(R.string.all_games),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 8.dp)

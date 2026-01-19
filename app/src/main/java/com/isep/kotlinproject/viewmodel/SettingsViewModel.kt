@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.isep.kotlinproject.util.LocaleManager
+
 /**
  * ViewModel for app settings including theme preferences.
  * Uses AndroidViewModel to access application context for SharedPreferences.
@@ -30,10 +32,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // Dark mode computed from theme preference
     private val _isDarkMode = MutableStateFlow<Boolean?>(null)
     val isDarkMode: StateFlow<Boolean?> = _isDarkMode.asStateFlow()
+
+    // Locale preference state
+    private val _currentLocale = MutableStateFlow(LocaleManager.DEFAULT_LOCALE)
+    val currentLocale: StateFlow<String> = _currentLocale.asStateFlow()
     
+    val supportedLocales = LocaleManager.SUPPORTED_LOCALES
+
     init {
         // Load local theme immediately
         _themePreference.value = settingsRepository.getLocalThemePreference()
+
+        // Load saved locale
+        _currentLocale.value = LocaleManager.getSavedLocale(getApplication())
         
         // Listen for Firestore updates
         viewModelScope.launch {
@@ -53,6 +64,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 _themePreference.value = theme
                 Log.d(TAG, "Theme updated to ${theme.value}")
             }
+        }
+    }
+
+    /**
+     * Update app locale
+     */
+    fun updateLocale(locale: String) {
+        if (locale in supportedLocales) {
+            LocaleManager.saveLocale(getApplication(), locale)
+            _currentLocale.value = locale
         }
     }
     

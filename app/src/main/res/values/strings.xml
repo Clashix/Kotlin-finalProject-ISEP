@@ -276,4 +276,52 @@
     <string name="get_started">Get Started</string>
     <string name="skip">Skip</string>
     <string name="next">Next</string>
+
+    <!-- New Resources -->
+    <string name="welcome_back">Welcome Back</string>
+    <string name="sign_in_continue">Sign in to continue</string>
+    <string name="email_address">Email Address</string>
+    <string name="email_help">Enter the email associated with your account.</string>
+    <string name="or_divider"> or </string>
+    <string name="create_account">Create Account</string>
+    <string name="full_name">Full Name</string>
+    <string name="password_help">Min 6 chars, at least 1 number</string>
+    <string name="role_prompt">I am a...</string>
+    <string name="information">Information</string>
+    <string name="got_it">Got it</string>
+    <string name="date_info">Date Info</string>
+    <string name="ok">Ok</string>
+    <string name="help">Help</string>
+    <string name="select_date">Select Date</string>
+    <string name="toggle_password_visibility">Toggle Password Visibility</string>
+    <string name="cd_google">Google</string>
+    <string name="cd_clear">Clear</string>
+    <string name="select_categories">Select Categories</string>
+    <string name="popular_genres">Popular Genres</string>
+    <string name="custom_category">Custom Category</string>
+    <string name="add_other">Add other...</string>
+    <string name="tap_to_add_cover">Tap to add cover image</string>
+    <string name="search_by_name">Search by name...</string>
+    <string name="cd_selected_image">Selected Game Image</string>
+    <string name="cd_existing_image">Existing Game Image</string>
+    <string name="categories">Categories</string>
+    <string name="error_category_required">At least one category is required</string>
+    <string name="description_help">Brief summary of the game\'s plot or gameplay.</string>
+    <string name="developer_help">Who created this game?</string>
+    <string name="release_date_help">When was the game first released?</string>
+    <string name="title_help">Enter the official name of the game.</string>
+    <string name="delete_game_title">Delete Game?</string>
+    <string name="report">Report</string>
+    
+    <!-- Profile Screen Resources -->
+    <string name="my_profile">My Profile</string>
+    <string name="empty_wishlist_msg">Your wishlist is empty.\nAdd games you want to play!</string>
+    <string name="empty_liked_msg">No liked games yet.\nLike games to see them here!</string>
+    <string name="empty_played_msg">No played games yet.\nMark games as played to track them!</string>
+    <string name="empty_reviews_msg">No reviews yet.\nRate some games to see your reviews here!</string>
+    <string name="load_more">Load More</string>
+    <string name="guest_user">Guest User</string>
+    <string name="unknown_role">Unknown Role</string>
+    <string name="cd_profile_photo">Profile Photo</string>
+    <string name="cd_change_photo">Change Photo</string>
 </resources>

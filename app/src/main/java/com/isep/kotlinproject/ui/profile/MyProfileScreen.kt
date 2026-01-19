@@ -26,11 +26,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.isep.kotlinproject.R
 import com.isep.kotlinproject.model.Game
 import com.isep.kotlinproject.model.ReviewWithGame
 import com.isep.kotlinproject.model.UserRole
@@ -86,26 +88,31 @@ fun MyProfileScreen(
     }
     
     val pagerState = rememberPagerState(pageCount = { 4 })
-    val tabs = listOf("Reviews", "Wishlist", "Liked", "Played")
+    val tabs = listOf(
+        stringResource(R.string.reviews),
+        stringResource(R.string.wishlist),
+        stringResource(R.string.liked_games),
+        stringResource(R.string.played_games)
+    )
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Profile") },
+                title = { Text(stringResource(R.string.my_profile)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
                     }
                     IconButton(onClick = {
                         authViewModel.logout()
                         onLogout()
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.logout))
                     }
                 }
             )
@@ -192,17 +199,17 @@ fun MyProfileScreen(
                         )
                         1 -> GamesGridTab(
                             games = wishlistGames,
-                            emptyMessage = "Your wishlist is empty.\nAdd games you want to play!",
+                            emptyMessage = stringResource(R.string.empty_wishlist_msg),
                             onGameClick = onNavigateToGame
                         )
                         2 -> GamesGridTab(
                             games = likedGames,
-                            emptyMessage = "No liked games yet.\nLike games to see them here!",
+                            emptyMessage = stringResource(R.string.empty_liked_msg),
                             onGameClick = onNavigateToGame
                         )
                         3 -> GamesGridTab(
                             games = playedGames,
-                            emptyMessage = "No played games yet.\nMark games as played to track them!",
+                            emptyMessage = stringResource(R.string.empty_played_msg),
                             onGameClick = onNavigateToGame
                         )
                     }
@@ -247,7 +254,7 @@ private fun ProfileHeader(
             if (photoUrl.isNotEmpty()) {
                 AsyncImage(
                     model = photoUrl,
-                    contentDescription = "Profile Photo",
+                    contentDescription = stringResource(R.string.cd_profile_photo),
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape),
@@ -280,7 +287,7 @@ private fun ProfileHeader(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.CameraAlt,
-                        contentDescription = "Change photo",
+                        contentDescription = stringResource(R.string.cd_change_photo),
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -344,7 +351,7 @@ private fun ProfileHeader(
         OutlinedButton(onClick = onFriendsClick) {
             Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("$friendsCount Friends")
+            Text(stringResource(R.string.friends_count, friendsCount))
         }
     }
 }
@@ -365,25 +372,25 @@ private fun StatsSection(
         StatCard(
             icon = Icons.Default.Favorite,
             count = likedCount,
-            label = "Liked",
+            label = stringResource(R.string.liked_games),
             color = Color(0xFFE91E63)
         )
         StatCard(
             icon = Icons.Default.CheckCircle,
             count = playedCount,
-            label = "Played",
+            label = stringResource(R.string.played_games),
             color = Color(0xFF4CAF50)
         )
         StatCard(
             icon = Icons.Default.BookmarkAdded,
             count = wishlistCount,
-            label = "Wishlist",
+            label = stringResource(R.string.wishlist),
             color = Color(0xFF2196F3)
         )
         StatCard(
             icon = Icons.Default.RateReview,
             count = reviewsCount,
-            label = "Reviews",
+            label = stringResource(R.string.reviews),
             color = Color(0xFFFF9800)
         )
     }
@@ -449,7 +456,7 @@ private fun ReviewsTab(
     if (reviews.isEmpty()) {
         EmptyStateMessage(
             icon = Icons.Default.RateReview,
-            message = "No reviews yet.\nRate some games to see your reviews here!"
+            message = stringResource(R.string.empty_reviews_msg)
         )
         return
     }
@@ -473,7 +480,7 @@ private fun ReviewsTab(
                     onClick = onLoadMore,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Load More")
+                    Text(stringResource(R.string.load_more))
                 }
             }
         }

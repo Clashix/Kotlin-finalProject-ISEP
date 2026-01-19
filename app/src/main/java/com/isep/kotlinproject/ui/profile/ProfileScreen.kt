@@ -25,10 +25,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.isep.kotlinproject.R
 import com.isep.kotlinproject.viewmodel.AuthViewModel
 
 @Composable
@@ -88,7 +90,7 @@ fun ProfileScreen(
                             .data(if (user?.photoURL.isNullOrEmpty()) "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" else user?.photoURL)
                             .crossfade(true)
                             .build(),
-                        contentDescription = "Profile Picture",
+                        contentDescription = stringResource(R.string.cd_profile_photo),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .fillMaxSize()
@@ -106,7 +108,7 @@ fun ProfileScreen(
                 ) {
                     Icon(
                         Icons.Default.CameraAlt, 
-                        contentDescription = "Change Photo", 
+                        contentDescription = stringResource(R.string.cd_change_photo), 
                         tint = MaterialTheme.colorScheme.onSecondary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -124,12 +126,12 @@ fun ProfileScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = user?.name ?: "Guest User", 
+                text = user?.name ?: stringResource(R.string.guest_user), 
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = user?.userRole?.name ?: "Unknown Role", 
+                text = user?.userRole?.name ?: stringResource(R.string.unknown_role), 
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -145,14 +147,14 @@ fun ProfileScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     ProfileInfoRow(
                         icon = Icons.Default.Email, 
-                        label = "Email", 
+                        label = stringResource(R.string.email), 
                         value = user?.email ?: "No Email"
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                     ProfileInfoRow(
                         icon = Icons.Default.VerifiedUser, 
-                        label = "Account Status", 
-                        value = "Active"
+                        label = stringResource(R.string.account_status), 
+                        value = stringResource(R.string.status_active)
                     )
                 }
             }
@@ -174,7 +176,7 @@ fun ProfileScreen(
             ) {
                 Icon(Icons.Default.Logout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Log Out", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.logout), fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -9,8 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.isep.kotlinproject.R
 import com.isep.kotlinproject.model.UserRole
 import com.isep.kotlinproject.ui.components.AppPasswordInput
 import com.isep.kotlinproject.ui.components.AppTextField
@@ -59,7 +61,7 @@ fun SignupScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Create Account", 
+                    text = stringResource(R.string.create_account), 
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -70,9 +72,9 @@ fun SignupScreen(
                 AppTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = "Full Name",
+                    label = stringResource(R.string.full_name),
                     leadingIcon = Icons.Default.Person,
-                    errorMessage = if (!isNameValid && name.isNotEmpty()) "Name is required" else null
+                    errorMessage = if (!isNameValid && name.isNotEmpty()) stringResource(R.string.error) else null
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -80,9 +82,9 @@ fun SignupScreen(
                 AppTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = "Email Address",
+                    label = stringResource(R.string.email_address),
                     leadingIcon = Icons.Default.Email,
-                    errorMessage = if (!isEmailValid) "Invalid email format" else null
+                    errorMessage = if (!isEmailValid) stringResource(R.string.error) else null
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -90,15 +92,15 @@ fun SignupScreen(
                 AppPasswordInput(
                     value = password,
                     onValueChange = { password = it },
-                    label = "Password",
-                    helpText = "Min 6 chars, at least 1 number",
-                    errorMessage = if (!isPasswordValid && password.isNotEmpty()) "Password too weak" else null
+                    label = stringResource(R.string.password),
+                    helpText = stringResource(R.string.password_help),
+                    errorMessage = if (!isPasswordValid && password.isNotEmpty()) stringResource(R.string.error) else null
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "I am a...", 
+                    text = stringResource(R.string.role_prompt), 
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -111,14 +113,14 @@ fun SignupScreen(
                     FilterChip(
                         selected = selectedRole == UserRole.PLAYER,
                         onClick = { selectedRole = UserRole.PLAYER },
-                        label = { Text("Player") },
+                        label = { Text(stringResource(R.string.role_player)) },
                         leadingIcon = { if (selectedRole == UserRole.PLAYER) Icon(Icons.Default.Person, null) else null }
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     FilterChip(
                         selected = selectedRole == UserRole.EDITOR,
                         onClick = { selectedRole = UserRole.EDITOR },
-                        label = { Text("Editor") },
+                        label = { Text(stringResource(R.string.role_editor)) },
                         leadingIcon = { if (selectedRole == UserRole.EDITOR) Icon(Icons.Default.Person, null) else null } // Use proper icon if available
                     )
                 }
@@ -137,7 +139,7 @@ fun SignupScreen(
                         enabled = name.isNotBlank() && isEmailValid && isPasswordValid && password.isNotEmpty(),
                         modifier = Modifier.fillMaxWidth().height(50.dp)
                     ) {
-                        Text("Sign Up")
+                        Text(stringResource(R.string.signup))
                     }
                 }
 
@@ -153,7 +155,7 @@ fun SignupScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 TextButton(onClick = onNavigateToLogin) {
-                    Text("Already have an account? Log In")
+                    Text(stringResource(R.string.have_account))
                 }
             }
         }

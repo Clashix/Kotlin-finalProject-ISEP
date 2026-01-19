@@ -35,11 +35,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.Timestamp
+import com.isep.kotlinproject.R
 import com.isep.kotlinproject.model.BiasDetector
 import com.isep.kotlinproject.model.BiasIndicator
 import com.isep.kotlinproject.model.ReliabilityLevel
@@ -152,7 +154,7 @@ fun GameDetailScreen(
                         contentDescription = null
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (userReview != null) "Edit Review" else "Rate Game")
+                    Text(if (userReview != null) stringResource(R.string.edit_review) else stringResource(R.string.rate_game))
                 }
             } else if (isOwner) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -160,14 +162,14 @@ fun GameDetailScreen(
                         onClick = { onEditClick(game!!.id) },
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
                     ) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
                     }
                     FloatingActionButton(
                         onClick = { showDeleteConfirmation = true },
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
                     }
                 }
             }
@@ -211,7 +213,7 @@ fun GameDetailScreen(
                                 .padding(top = 40.dp, start = 16.dp)
                                 .background(Color.Black.copy(alpha = 0.4f), CircleShape)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Color.White)
                         }
                         
                         // Title Overlay
@@ -273,7 +275,7 @@ fun GameDetailScreen(
                             // Like button
                             ActionButton(
                                 icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                label = if (isLiked) "Liked" else "Like",
+                                label = if (isLiked) stringResource(R.string.like_game) else stringResource(R.string.like_game),
                                 isActive = isLiked,
                                 activeColor = Color(0xFFE91E63),
                                 onClick = { userViewModel.toggleLike(gameId) }
@@ -282,7 +284,7 @@ fun GameDetailScreen(
                             // Played button
                             ActionButton(
                                 icon = if (isPlayed) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
-                                label = if (isPlayed) "Played" else "Mark Played",
+                                label = if (isPlayed) stringResource(R.string.played_games) else stringResource(R.string.mark_as_played),
                                 isActive = isPlayed,
                                 activeColor = Color(0xFF4CAF50),
                                 onClick = { userViewModel.togglePlayed(gameId) }
@@ -291,7 +293,7 @@ fun GameDetailScreen(
                             // Wishlist button
                             ActionButton(
                                 icon = if (isInWishlist) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd,
-                                label = if (isInWishlist) "In Wishlist" else "Wishlist",
+                                label = if (isInWishlist) stringResource(R.string.wishlist) else stringResource(R.string.add_to_wishlist),
                                 isActive = isInWishlist,
                                 activeColor = Color(0xFF2196F3),
                                 onClick = { userViewModel.toggleWishlist(gameId) }
@@ -304,13 +306,13 @@ fun GameDetailScreen(
                 item {
                     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                         Text(
-                            text = "About",
+                            text = stringResource(R.string.about),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = game!!.description.ifEmpty { "No description available." },
+                            text = game!!.description.ifEmpty { stringResource(R.string.no_description) },
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                             lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.4
@@ -329,13 +331,13 @@ fun GameDetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Reviews",
+                                text = stringResource(R.string.reviews),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             if (reviews.isNotEmpty()) {
                                 TextButton(onClick = { /* See All Logic if needed */ }) {
-                                    Text("See All")
+                                    Text(stringResource(R.string.see_all))
                                 }
                             }
                         }
@@ -353,8 +355,8 @@ fun GameDetailScreen(
                                         .fillMaxWidth(),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("No reviews yet")
-                                    Text("Be the first to share your opinion!", style = MaterialTheme.typography.bodySmall)
+                                    Text(stringResource(R.string.no_reviews))
+                                    Text(stringResource(R.string.be_first_review), style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
@@ -366,7 +368,7 @@ fun GameDetailScreen(
                     item {
                         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                              Text(
-                                text = "Your Review",
+                                text = stringResource(R.string.your_review),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
@@ -450,8 +452,8 @@ fun GameDetailScreen(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete Game?") },
-            text = { Text("This action cannot be undone. Are you sure you want to remove this game from the library?") },
+            title = { Text(stringResource(R.string.delete_game_title)) },
+            text = { Text(stringResource(R.string.delete_game_confirm)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -460,12 +462,12 @@ fun GameDetailScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -512,7 +514,7 @@ fun GameDetailScreen(
     newBadge?.let { badge ->
         AlertDialog(
             onDismissRequest = { viewModel.clearNewBadge() },
-            title = { Text("New Badge Earned!") },
+            title = { Text(stringResource(R.string.badge_earned)) },
             text = { 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -648,11 +650,11 @@ fun UserReviewCard(
                 }
                 Row {
                     IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit), modifier = Modifier.size(16.dp))
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -735,7 +737,7 @@ fun ReviewItem(
                     ) {
                         Icon(
                             Icons.Default.MoreVert, 
-                            contentDescription = "More options",
+                            contentDescription = stringResource(R.string.report),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -744,7 +746,7 @@ fun ReviewItem(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Report") },
+                            text = { Text(stringResource(R.string.report)) },
                             leadingIcon = { 
                                 Icon(
                                     Icons.Default.Flag, 
@@ -798,7 +800,7 @@ fun AddReviewDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existingReview != null) "Edit Review" else "Rate Game") },
+        title = { Text(if (existingReview != null) stringResource(R.string.edit_review) else stringResource(R.string.rate_game)) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -819,7 +821,7 @@ fun AddReviewDialog(
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { comment = it },
-                    label = { Text("Write a review (optional)") },
+                    label = { Text(stringResource(R.string.write_review)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3
                 )
@@ -827,12 +829,12 @@ fun AddReviewDialog(
         },
         confirmButton = {
             Button(onClick = { onSubmit(rating, comment) }) {
-                Text("Submit")
+                Text(stringResource(R.string.submit))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

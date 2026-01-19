@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -108,14 +109,14 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Welcome Back", 
+                    text = stringResource(R.string.welcome_back), 
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 
                 Text(
-                    text = "Sign in to continue", 
+                    text = stringResource(R.string.sign_in_continue), 
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -125,9 +126,9 @@ fun LoginScreen(
                 AppTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = "Email Address",
+                    label = stringResource(R.string.email_address),
                     leadingIcon = Icons.Default.Email,
-                    helpText = "Enter the email associated with your account."
+                    helpText = stringResource(R.string.email_help)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -135,7 +136,7 @@ fun LoginScreen(
                 AppPasswordInput(
                     value = password,
                     onValueChange = { password = it },
-                    label = "Password"
+                    label = stringResource(R.string.password)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -152,7 +153,7 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         enabled = email.isNotBlank() && password.isNotBlank()
                     ) {
-                        Text("Log In")
+                        Text(stringResource(R.string.login))
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
@@ -164,7 +165,7 @@ fun LoginScreen(
                     ) {
                         HorizontalDivider(modifier = Modifier.weight(1f))
                         Text(
-                            text = "  or  ",
+                            text = stringResource(R.string.or_divider),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -187,13 +188,13 @@ fun LoginScreen(
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_google),
-                                contentDescription = "Google",
+                                contentDescription = stringResource(R.string.cd_google),
                                 tint = Color.Unspecified,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Continue with Google",
+                                text = stringResource(R.string.login_with_google),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -212,7 +213,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 TextButton(onClick = onNavigateToSignup) {
-                    Text("Don't have an account? Sign Up")
+                    Text(stringResource(R.string.no_account))
                 }
             }
         }
