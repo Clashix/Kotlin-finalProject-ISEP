@@ -468,6 +468,62 @@ class UserViewModel : ViewModel() {
     }
     
     // =====================================================
+    // FOLLOW EDITOR
+    // =====================================================
+    
+    /**
+     * Toggle follow status for an editor
+     */
+    fun toggleFollowEditor(editorId: String) {
+        val currentlyFollowing = _currentUser.value?.followingEditors?.contains(editorId) == true
+        
+        viewModelScope.launch {
+            val success = if (currentlyFollowing) {
+                repository.unfollowEditor(editorId)
+            } else {
+                repository.followEditor(editorId)
+            }
+            
+            if (success) {
+                // Update local state immediately
+                _currentUser.value = _currentUser.value?.let { user ->
+                    val newFollowing = if (currentlyFollowing) {
+                        user.followingEditors.filter { it != editorId }
+                    } else {
+                        user.followingEditors + editorId
+                    }
+                    user.copy(followingEditors = newFollowing)
+                }
+                _successMessage.value = if (currentlyFollowing) "Unfollowed editor" else "Now following editor"
+            } else {
+                _error.value = "Failed to update follow status"
+            }
+        }
+    }
+    
+    /**
+     * Check if currently following an editor
+     */
+    fun isFollowingEditor(editorId: String): Boolean {
+        return _currentUser.value?.followingEditors?.contains(editorId) == true
+    }
+    
+    /**
+     * Get list of followed editors
+     */
+    private val _followingEditors = MutableStateFlow<List<User>>(emptyList())
+    val followingEditors: StateFlow<List<User>> = _followingEditors.asStateFlow()
+    
+    fun loadFollowingEditors() {
+        viewModelScope.launch {
+            _currentUser.value?.followingEditors?.let { editorIds ->
+                val editors = editorIds.mapNotNull { repository.getUser(it) }
+                _followingEditors.value = editors
+            }
+        }
+    }
+    
+    // =====================================================
     // UTILITY
     // =====================================================
     

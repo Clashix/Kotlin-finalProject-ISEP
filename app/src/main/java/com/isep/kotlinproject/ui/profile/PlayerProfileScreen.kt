@@ -357,7 +357,7 @@ private fun ProfileHeader(
             )
             
             Text(
-                text = user.role.name,
+                text = user.userRole.name,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )

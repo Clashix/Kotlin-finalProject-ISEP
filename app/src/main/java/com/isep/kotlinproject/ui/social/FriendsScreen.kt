@@ -224,7 +224,7 @@ private fun UserSearchResultItem(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = user.role.name,
+                    text = user.userRole.name,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -374,7 +374,7 @@ private fun FriendListItem(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = user.role.name,
+                    text = user.userRole.name,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

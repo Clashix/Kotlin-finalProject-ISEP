@@ -13,14 +13,68 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
+/**
+ * Enumeration of available sorting strategies for the game catalog.
+ * 
+ * Each option provides a different perspective on the game collection:
+ * - Alphabetical options for browsing.
+ * - Rating-based options for quality discovery.
+ * - Activity-based options for popular/trending content.
+ * 
+ * @property displayName User-facing label for the sort option dropdown.
+ */
+enum class GameSortOption(val displayName: String) {
+    TITLE_ASC("Title (A-Z)"),
+    TITLE_DESC("Title (Z-A)"),
+    HIGHEST_RATED("Highest Rated"),
+    LOWEST_RATED("Lowest Rated"),
+    MOST_REVIEWED("Most Reviewed"),
+    NEWEST("Newest"),
+    TRENDING("Trending")
+}
+
+/**
+ * Repository class providing data access operations for games and reviews.
+ * 
+ * This repository serves as the single source of truth for game-related data,
+ * abstracting Firestore and Firebase Storage operations from the ViewModel layer.
+ * It provides both real-time Flow-based listeners and one-shot query methods.
+ * 
+ * **Responsibilities:**
+ * - CRUD operations for games (create, read, update, delete).
+ * - Review management (add, update, delete, query).
+ * - Image upload to Firebase Storage.
+ * - Real-time listeners for game and review collections.
+ * - Rating statistics computation.
+ * 
+ * **Firestore Structure:**
+ * ```
+ * games/{gameId}
+ *   - Game document fields
+ *   - reviews/{reviewId}  (subcollection)
+ * ```
+ * 
+ * **Thread Safety:**
+ * All operations are suspending functions or Flow-based, designed to be called
+ * from coroutine scopes. Firebase SDK handles internal threading.
+ * 
+ * @see Game for the game data model.
+ * @see Review for the review data model.
+ * @see GameViewModel for the consumer of this repository.
+ */
 class GameRepository {
     private val firestore = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
     
-    // Global games collection
+    /** Reference to the global games collection in Firestore. */
     private val gamesCollection = firestore.collection("games")
     
-    // Get reviews subcollection for a game
+    /**
+     * Returns a reference to the reviews subcollection for a specific game.
+     * 
+     * @param gameId The Firestore document ID of the parent game.
+     * @return CollectionReference for the game's reviews.
+     */
     private fun getReviewsCollection(gameId: String) = 
         gamesCollection.document(gameId).collection("reviews")
 
@@ -310,6 +364,107 @@ class GameRepository {
         } catch (e: Exception) {
             Log.e("GameRepository", "Error deleting review", e)
             throw e
+        }
+    }
+    
+    // ============== ADVANCED SORTING ==============
+    
+    /**
+     * Get all games with a specific sort order.
+     * Note: Some sorting options require client-side processing due to Firestore limitations.
+     * 
+     * IMPLEMENTATION NOTES:
+     * - TITLE_ASC/DESC: Uses Firestore ordering
+     * - HIGHEST/LOWEST_RATED: Uses Firestore ordering on averageRating
+     * - MOST_REVIEWED: Uses Firestore ordering on ratingCount
+     * - NEWEST: Uses Firestore ordering on createdAt
+     * - TRENDING: Client-side heuristic (recent activity + rating)
+     */
+    fun getGamesSortedFlow(sortOption: GameSortOption): Flow<List<Game>> = callbackFlow {
+        val query = when (sortOption) {
+            GameSortOption.TITLE_ASC -> 
+                gamesCollection.orderBy("title", Query.Direction.ASCENDING)
+            GameSortOption.TITLE_DESC -> 
+                gamesCollection.orderBy("title", Query.Direction.DESCENDING)
+            GameSortOption.HIGHEST_RATED -> 
+                gamesCollection.orderBy("averageRating", Query.Direction.DESCENDING)
+            GameSortOption.LOWEST_RATED -> 
+                gamesCollection.orderBy("averageRating", Query.Direction.ASCENDING)
+            GameSortOption.MOST_REVIEWED -> 
+                gamesCollection.orderBy("ratingCount", Query.Direction.DESCENDING)
+            GameSortOption.NEWEST -> 
+                gamesCollection.orderBy("createdAt", Query.Direction.DESCENDING)
+            GameSortOption.TRENDING -> 
+                // Fetch all and sort client-side
+                gamesCollection.orderBy("title", Query.Direction.ASCENDING)
+        }
+        
+        val subscription = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e("GameRepository", "Listen failed", error)
+                close(error)
+                return@addSnapshotListener
+            }
+            
+            if (snapshot != null) {
+                var games = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Game::class.java)?.copy(id = doc.id)
+                }
+                
+                // Apply client-side trending sort if needed
+                if (sortOption == GameSortOption.TRENDING) {
+                    games = games.sortedByDescending { game ->
+                        calculateTrendingScore(game)
+                    }
+                }
+                
+                trySend(games)
+            } else {
+                trySend(emptyList())
+            }
+        }
+        
+        awaitClose { subscription.remove() }
+    }
+    
+    /**
+     * Calculate trending score for a game.
+     * 
+     * HEURISTIC:
+     * - Weight recent reviews more heavily
+     * - Consider average rating
+     * - Formula: (ratingCount * 2) + (averageRating * 10)
+     * 
+     * LIMITATION: This is a simplified heuristic. A production system would
+     * track review timestamps and weight recent reviews more heavily.
+     */
+    private fun calculateTrendingScore(game: Game): Double {
+        val reviewWeight = game.ratingCount * 2.0
+        val ratingWeight = game.averageRating * 10.0
+        
+        // Bonus for games with more reviews (social proof)
+        val popularityBonus = if (game.ratingCount >= 10) 20.0 
+                              else if (game.ratingCount >= 5) 10.0 
+                              else 0.0
+        
+        return reviewWeight + ratingWeight + popularityBonus
+    }
+    
+    /**
+     * Get recent reviews count for a game (last 7 days)
+     * Used for more accurate trending calculation
+     */
+    suspend fun getRecentReviewCount(gameId: String, daysAgo: Int = 7): Int {
+        return try {
+            val cutoffTime = System.currentTimeMillis() - (daysAgo * 24 * 60 * 60 * 1000L)
+            val snapshot = getReviewsCollection(gameId)
+                .whereGreaterThan("timestamp", cutoffTime)
+                .get()
+                .await()
+            snapshot.size()
+        } catch (e: Exception) {
+            Log.e("GameRepository", "Error getting recent review count", e)
+            0
         }
     }
 }

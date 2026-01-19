@@ -36,12 +36,20 @@ The application integrates with **Steam API** for game data import and uses **Fi
 | Feature | Description |
 |---------|-------------|
 | **Game Discovery** | Browse and search games by title, genre, or editor |
+| **Advanced Sorting** | Sort by highest rated, most reviewed, or trending |
 | **Reviews** | Write, edit, and delete reviews with 1-5 star ratings |
+| **Review Reliability** | See reliability scores based on reviewer account age and activity |
+| **Bias Detection** | Warning labels for potentially biased reviews |
+| **Report Reviews** | Report spam, offensive, or fake reviews |
 | **Personal Collections** | Mark games as Liked, Played, or add to Wishlist |
-| **Public Profiles** | View other users' profiles, reviews, and collections |
+| **Badges & Achievements** | Earn badges for milestones (first review, 5 reviews, 10 reviews) |
+| **Public Profiles** | View other users' profiles, reviews, collections, and badges |
+| **Follow Editors** | Follow game editors and see their published games |
 | **Friends System** | Send/accept friend requests, manage friend list |
+| **Notifications Center** | View friend requests and other notifications |
 | **Real-time Chat** | Message friends with instant delivery |
 | **Trending Games** | Discover popular games (daily/weekly/monthly) |
+| **Dark/Light Mode** | Toggle theme with sync across devices |
 
 ### For Editors
 
@@ -49,6 +57,7 @@ The application integrates with **Steam API** for game data import and uses **Fi
 |---------|-------------|
 | **Game Management** | Add, edit, delete games with image upload |
 | **Steam Import** | Import game data directly from Steam API |
+| **Game Edit History** | Track all create/update/delete actions on games |
 | **Statistics Dashboard** | View total games, reviews, average rating |
 | **Interactive Charts** | Rating distribution (Pie), Evolution (Line), Reviews/Day (Bar) |
 | **Real-time Updates** | Statistics refresh automatically on new reviews |
@@ -58,10 +67,10 @@ The application integrates with **Steam API** for game data import and uses **Fi
 | Feature | Description |
 |---------|-------------|
 | **Authentication** | Email/Password and Google Sign-In |
+| **Dark/Light Mode** | Theme preference synced across devices |
 | **Multi-language** | English and French (i18n ready) |
 | **Offline Support** | Firestore caching for offline access |
 | **Real-time Sync** | Instant updates across devices |
-| **Cloud Functions** | Server-side statistics computation |
 
 ---
 
@@ -138,6 +147,11 @@ com.isep.kotlinproject/
 │   ├── Game.kt
 │   ├── Review.kt
 │   ├── GameStats.kt
+│   ├── Badge.kt
+│   ├── ReviewReport.kt
+│   ├── ReviewReliability.kt
+│   ├── BiasIndicator.kt
+│   ├── GameHistory.kt
 │   ├── Chat.kt
 │   ├── Message.kt
 │   ├── FriendRequest.kt
@@ -189,7 +203,6 @@ com.isep.kotlinproject/
 | **Auth** | Firebase Auth + Google | 21.3.0 |
 | **Database** | Cloud Firestore | - |
 | **Storage** | Firebase Storage | - |
-| **Serverless** | Cloud Functions | TypeScript |
 
 ---
 
@@ -199,9 +212,8 @@ com.isep.kotlinproject/
 
 - Android Studio Hedgehog (2023.1.1) or later
 - JDK 17 or later
-- Node.js 18+ (for Cloud Functions)
 - Firebase CLI: `npm install -g firebase-tools`
-- A Firebase project with Blaze plan (required for Cloud Functions)
+- A Firebase project
 
 ### 1. Clone the Repository
 
@@ -287,13 +299,6 @@ firebase deploy --only firestore:indexes
 
 # Deploy storage rules
 firebase deploy --only storage
-
-# Deploy Cloud Functions
-cd functions
-npm install
-npm run build
-cd ..
-firebase deploy --only functions
 ```
 
 ---
@@ -302,37 +307,19 @@ firebase deploy --only functions
 
 | Collection | Description |
 |------------|-------------|
-| `users` | User profiles with social data |
+| `users` | User profiles with social data and theme preference |
+| `users/{uid}/badges` | Earned badges (subcollection) |
 | `games` | Game catalog with metadata |
 | `games/{id}/reviews` | Game reviews (subcollection) |
-| `game_stats` | Computed statistics (Cloud Functions only) |
+| `game_stats` | Computed statistics |
 | `game_stats/{id}/daily_stats` | Daily statistics |
+| `game_history` | Editor action history (create/update/delete) |
+| `review_reports` | Reported reviews for moderation |
 | `chats` | Chat conversations |
 | `chats/{id}/messages` | Chat messages |
 | `friend_requests` | Friend request records |
+| `notifications` | User notifications |
 | `trending` | Trending games rankings |
-
-See `FIRESTORE_SCHEMA.md` for detailed field documentation.
-
----
-
-## Cloud Functions
-
-| Function | Trigger | Purpose |
-|----------|---------|---------|
-| `onReviewCreated` | Firestore onCreate | Update game stats on new review |
-| `onReviewUpdated` | Firestore onUpdate | Adjust ratings on review edit |
-| `onReviewDeleted` | Firestore onDelete | Decrement counts on review delete |
-| `computeTrendingGames` | Scheduled (hourly) | Compute trending rankings |
-| `onFriendRequestAccepted` | Firestore onUpdate | Add users to friend lists |
-| `onUserDeleted` | Firestore onDelete | Cleanup user data |
-| `onGameDeleted` | Firestore onDelete | Cleanup game data |
-
-### Trending Score Formula
-
-```
-Score = (recentReviews × 2) + (averageRating × 10) + (log₁₀(totalReviews + 1) × 5)
-```
 
 ---
 
@@ -401,11 +388,18 @@ Output: `app/build/outputs/apk/release/app-release.apk`
 - [ ] Login/Logout
 - [ ] Game CRUD (Editor)
 - [ ] Review CRUD (Player)
+- [ ] Review reporting
 - [ ] Like/Played/Wishlist toggles
 - [ ] Friend requests (send/accept/reject)
+- [ ] Notifications center
 - [ ] Real-time chat
 - [ ] Statistics dashboard with charts
+- [ ] Game edit history (Editor)
+- [ ] Advanced game sorting
 - [ ] Trending games
+- [ ] Follow/Unfollow editors
+- [ ] Badges display on profile
+- [ ] Dark/Light mode toggle
 - [ ] Language switching
 - [ ] Profile editing
 - [ ] Users directory and search
@@ -435,26 +429,10 @@ Output: `app/build/outputs/apk/release/app-release.apk`
 |--------------|----------------|
 | **Pagination** | Cursor-based Firestore pagination |
 | **Denormalization** | Game titles stored in reviews |
-| **Server Compute** | Statistics via Cloud Functions |
+| **Client-side Compute** | Statistics and trending computed locally |
 | **Indexing** | Composite indexes for queries |
 | **Caching** | Firestore SDK local cache |
 | **Debouncing** | 300ms delay on search input |
-
----
-
-## Documentation
-
-Detailed documentation is available in the `reports/` folder:
-
-| Document | Description |
-|----------|-------------|
-| `FUNCTIONAL_SPECIFICATIONS.md` | Functional requirements, use cases, user flows |
-| `TECHNICAL_SPECIFICATIONS.md` | Architecture, tech choices, libraries |
-| `CLASS_DIAGRAM.md` | Complete class diagrams |
-| `USE_CASE_DIAGRAM.md` | Use case diagrams with actors |
-| `INTEGRATION_CHECKLIST.md` | Deployment and testing checklist |
-| `SCREENSHOTS_GUIDE.md` | Guide for taking app screenshots |
-| `PRESENTATION.md` | Defense presentation slides |
 
 ---
 
@@ -488,16 +466,6 @@ firebase deploy --only firestore:rules
 firebase deploy --only firestore:indexes
 ```
 
-### Cloud Functions Not Triggering
-
-**Cause**: Functions not deployed or Blaze plan not enabled
-
-**Solution**:
-1. Upgrade to Blaze plan in Firebase Console
-2. Redeploy: `firebase deploy --only functions`
-
----
-
 ## Contributing
 
 1. Fork the repository
@@ -510,7 +478,9 @@ firebase deploy --only firestore:indexes
 
 ## Authors
 
-- **Romain Herrenknecht** - *Developer* - [romain.herrenknecht@eleve.isep.fr](mailto:romain.herrenknecht@eleve.isep.fr)
+- **Romain HERRENKNECHT** - *Developer* - [romain.herrenknecht@eleve.isep.fr](mailto:romain.herrenknecht@eleve.isep.fr)
+- **Charles PEPINEAU** - *Developer* - [charles.pepineau@eleve.isep.fr](mailto:charles.pepineau@eleve.isep.fr)
+- **Francois BERI** - *Developer* - [francois.beri@eleve.isep.fr](mailto:francois.beri@eleve.isep.fr)
 
 ---
 

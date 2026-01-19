@@ -78,7 +78,7 @@ class AuthViewModel : ViewModel() {
                         uid = firebaseUser.uid,
                         displayName = name,
                         email = email,
-                        role = role,
+                        userRole = role,
                         photoURL = firebaseUser.photoUrl?.toString() ?: "",
                         locale = "en"
                     )
@@ -115,7 +115,7 @@ class AuthViewModel : ViewModel() {
                             uid = firebaseUser.uid,
                             displayName = firebaseUser.displayName ?: "User",
                             email = firebaseUser.email ?: "",
-                            role = role ?: UserRole.PLAYER,
+                            userRole = role ?: UserRole.PLAYER,
                             photoURL = firebaseUser.photoUrl?.toString() ?: "",
                             locale = "en"
                         )
@@ -250,7 +250,7 @@ class AuthViewModel : ViewModel() {
                 "email" to user.email,
                 "photoURL" to user.photoURL,
                 "profileImageUrl" to user.photoURL, // Legacy field
-                "role" to user.role.name,
+                "role" to user.userRole.name,
                 "locale" to user.locale,
                 "friends" to user.friends,
                 "likedGames" to user.likedGames,
@@ -301,14 +301,17 @@ class AuthViewModel : ViewModel() {
                             ?: data["profileImageUrl"] as? String 
                             ?: "",
                         bio = data["bio"] as? String ?: "",
-                        _role = roleString.lowercase(),
+                        role = roleString.lowercase(),
                         locale = data["locale"] as? String ?: "en",
                         friends = data["friends"] as? List<String> ?: emptyList(),
                         likedGames = data["likedGames"] as? List<String> ?: emptyList(),
                         playedGames = data["playedGames"] as? List<String> ?: emptyList(),
                         wishlist = data["wishlist"] as? List<String> ?: emptyList(),
                         wishlistSteamAppIds = data["wishlistSteamAppIds"] as? List<String> ?: emptyList(),
-                        name = data["name"] as? String ?: ""
+                        followingEditors = data["followingEditors"] as? List<String> ?: emptyList(),
+                        themePreference = data["themePreference"] as? String ?: "system",
+                        name = data["name"] as? String ?: "",
+                        profileImageUrl = data["profileImageUrl"] as? String ?: ""
                     )
                     
                     _user.value = fetchedUser
@@ -329,7 +332,7 @@ class AuthViewModel : ViewModel() {
      * Route user to appropriate destination based on role
      */
     private fun routeUser(user: User) {
-        if (user.role == UserRole.PLAYER) {
+        if (user.userRole == UserRole.PLAYER) {
             _navigateDestination.value = "player_home"
         } else {
             _navigateDestination.value = "editor_dashboard"

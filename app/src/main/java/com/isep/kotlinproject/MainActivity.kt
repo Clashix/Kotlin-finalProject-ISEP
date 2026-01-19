@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -18,10 +19,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.isep.kotlinproject.model.ThemePreference
 import com.isep.kotlinproject.model.UserRole
 import com.isep.kotlinproject.ui.auth.LoginScreen
 import com.isep.kotlinproject.ui.auth.SignupScreen
 import com.isep.kotlinproject.ui.editor.EditorDashboardScreen
+import com.isep.kotlinproject.ui.editor.GameHistoryScreen
 import com.isep.kotlinproject.ui.game.AddEditGameScreen
 import com.isep.kotlinproject.ui.game.GameDetailScreen
 import com.isep.kotlinproject.ui.main.MainScreen
@@ -30,16 +33,20 @@ import com.isep.kotlinproject.ui.profile.MyProfileScreen
 import com.isep.kotlinproject.ui.profile.PlayerProfileScreen
 import com.isep.kotlinproject.ui.profile.ProfileScreen
 import com.isep.kotlinproject.ui.profile.WishlistScreen
+import com.isep.kotlinproject.ui.settings.SettingsScreen
 import com.isep.kotlinproject.ui.social.ChatScreen
 import com.isep.kotlinproject.ui.social.ChatsListScreen
 import com.isep.kotlinproject.ui.social.FriendsScreen
+import com.isep.kotlinproject.ui.social.NotificationsScreen
 import com.isep.kotlinproject.ui.theme.KotlinProjectTheme
 import com.isep.kotlinproject.ui.trending.TrendingScreen
 import com.isep.kotlinproject.ui.users.PublicUserProfileScreen
 import com.isep.kotlinproject.util.withLocale
 import com.isep.kotlinproject.viewmodel.AuthViewModel
+import com.isep.kotlinproject.viewmodel.BadgeViewModel
 import com.isep.kotlinproject.viewmodel.ChatViewModel
 import com.isep.kotlinproject.viewmodel.GameViewModel
+import com.isep.kotlinproject.viewmodel.SettingsViewModel
 import com.isep.kotlinproject.viewmodel.StatsViewModel
 import com.isep.kotlinproject.viewmodel.UserViewModel
 import com.isep.kotlinproject.viewmodel.UsersViewModel
@@ -58,7 +65,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            KotlinProjectTheme {
+            // ViewModels that need to be available before theme
+            val settingsViewModel: SettingsViewModel = viewModel()
+            
+            // Theme preference - must be computed before KotlinProjectTheme
+            val themePreference by settingsViewModel.themePreference.collectAsState()
+            val systemInDarkTheme = isSystemInDarkTheme()
+            val useDarkTheme = when (themePreference) {
+                ThemePreference.LIGHT -> false
+                ThemePreference.DARK -> true
+                ThemePreference.SYSTEM -> systemInDarkTheme
+            }
+            
+            KotlinProjectTheme(darkTheme = useDarkTheme) {
                 val navController = rememberNavController()
                 
                 // ViewModels
@@ -68,6 +87,7 @@ class MainActivity : ComponentActivity() {
                 val usersViewModel: UsersViewModel = viewModel()
                 val statsViewModel: StatsViewModel = viewModel()
                 val chatViewModel: ChatViewModel = viewModel()
+                val badgeViewModel: BadgeViewModel = viewModel()
                 
                 // State
                 val navigateDestination by authViewModel.navigateDestination.collectAsState()
@@ -82,10 +102,10 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(currentUser) {
                     if (currentUser != null) {
                         val user = currentUser!!
-                        gameViewModel.setUserInfo(user.role, user.getDisplayNameOrLegacy())
+                        gameViewModel.setUserInfo(user.userRole, user.getDisplayNameOrLegacy())
                         
                         // Editors see only their games, Players see all games
-                        if (user.role == UserRole.EDITOR) {
+                        if (user.userRole == UserRole.EDITOR) {
                             gameViewModel.startListening(isEditor = true, editorId = user.uid)
                         } else {
                             gameViewModel.startListening(isEditor = false)
@@ -152,12 +172,13 @@ class MainActivity : ComponentActivity() {
                         // MAIN SCREENS
                         // =====================================================
                         
-                        // Main screen with bottom navigation (Games + Users tabs)
+                        // Main screen with bottom navigation (Games + Users + Notifications tabs)
                         composable("game_list") {
-                            val userRole = currentUser?.role ?: UserRole.PLAYER
+                            val userRole = currentUser?.userRole ?: UserRole.PLAYER
                             MainScreen(
                                 gameViewModel = gameViewModel,
                                 usersViewModel = usersViewModel,
+                                userViewModel = userViewModel,
                                 userRole = userRole,
                                 onGameClick = { gameId -> 
                                     navController.navigate("game_detail/$gameId") 
@@ -166,6 +187,9 @@ class MainActivity : ComponentActivity() {
                                 onProfileClick = { navController.navigate("profile") },
                                 onUserClick = { userId ->
                                     navController.navigate("public_profile/$userId")
+                                },
+                                onNotificationsClick = { 
+                                    navController.navigate("notifications") 
                                 }
                             )
                         }
@@ -179,6 +203,7 @@ class MainActivity : ComponentActivity() {
                             PublicUserProfileScreen(
                                 userId = userId,
                                 viewModel = usersViewModel,
+                                userViewModel = userViewModel,
                                 onNavigateBack = { navController.popBackStack() },
                                 onNavigateToGame = { gameId ->
                                     navController.navigate("game_detail/$gameId")
@@ -195,7 +220,7 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("gameId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val gameId = backStackEntry.arguments?.getString("gameId") ?: return@composable
-                            val userRole = currentUser?.role ?: UserRole.PLAYER
+                            val userRole = currentUser?.userRole ?: UserRole.PLAYER
                             GameDetailScreen(
                                 gameId = gameId,
                                 viewModel = gameViewModel,
@@ -303,6 +328,17 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         
+                        // Notifications (Friend requests and other notifications)
+                        composable("notifications") {
+                            NotificationsScreen(
+                                viewModel = userViewModel,
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToUser = { userId ->
+                                    navController.navigate("public_profile/$userId")
+                                }
+                            )
+                        }
+                        
                         // Chats List
                         composable("chats") {
                             ChatsListScreen(
@@ -397,8 +433,22 @@ class MainActivity : ComponentActivity() {
                         // =====================================================
                         
                         composable("settings") {
-                            // Settings screen - placeholder for now
-                            // Can implement SettingsScreen with locale selection
+                            SettingsScreen(
+                                viewModel = settingsViewModel,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        
+                        // Game Edit History (Editor only)
+                        composable("game_history") {
+                            val editorId = currentUser?.uid ?: return@composable
+                            GameHistoryScreen(
+                                editorId = editorId,
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToGame = { gameId ->
+                                    navController.navigate("game_detail/$gameId")
+                                }
+                            )
                         }
                     }
                 }

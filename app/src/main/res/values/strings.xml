@@ -124,6 +124,7 @@
     <string name="remove_friend">Remove Friend</string>
     <string name="friend_requests">Friend Requests</string>
     <string name="pending_requests">Pending Requests</string>
+    <string name="pending">Pending</string>
     <string name="accept">Accept</string>
     <string name="reject">Reject</string>
     <string name="request_sent">Friend request sent</string>
@@ -132,6 +133,7 @@
     <string name="search_users">Search users...</string>
     <string name="already_friends">Already friends</string>
     <string name="send_request">Send Request</string>
+    <string name="message">Message</string>
     
     <!-- Chat -->
     <string name="messages">Messages</string>
@@ -215,6 +217,56 @@
     <string name="error_load_data">Failed to load data.</string>
     <string name="error_save_data">Failed to save data.</string>
     <string name="error_upload">Upload failed. Please try again.</string>
+    
+    <!-- Badges -->
+    <string name="badges">Badges</string>
+    <string name="no_badges">No badges earned yet</string>
+    <string name="badge_earned">New Badge Earned!</string>
+    
+    <!-- Report Review -->
+    <string name="report_review">Report Review</string>
+    <string name="report_reason_prompt">Why are you reporting this review?</string>
+    <string name="additional_info">Additional information</string>
+    <string name="additional_info_hint">Optional: provide more details</string>
+    <string name="report_submitted">Report submitted. Thank you.</string>
+    <string name="already_reported">You have already reported this review</string>
+    
+    <!-- Sorting -->
+    <string name="sort_by">Sort by</string>
+    <string name="sort_title_asc">Title (A-Z)</string>
+    <string name="sort_title_desc">Title (Z-A)</string>
+    <string name="sort_highest_rated">Highest Rated</string>
+    <string name="sort_lowest_rated">Lowest Rated</string>
+    <string name="sort_most_reviewed">Most Reviewed</string>
+    <string name="sort_newest">Newest</string>
+    <string name="sort_trending">Trending</string>
+    
+    <!-- Game History -->
+    <string name="edit_history">Edit History</string>
+    <string name="no_history">No edit history</string>
+    <string name="game_created">Game created</string>
+    <string name="game_updated">Game updated</string>
+    <string name="game_deleted">Game deleted</string>
+    
+    <!-- Follow Editor -->
+    <string name="follow">Follow</string>
+    <string name="following">Following</string>
+    <string name="unfollow">Unfollow</string>
+    <string name="followers">Followers</string>
+    <string name="following_editors">Following Editors</string>
+    <string name="no_following">Not following any editors</string>
+    
+    <!-- Reliability -->
+    <string name="reviewer_reliability">Reviewer Reliability</string>
+    <string name="reliability_factors">Contributing Factors</string>
+    <string name="reliability_disclaimer">This score is calculated based on account age, review history, and profile completeness. It is not a guarantee of review accuracy.</string>
+    
+    <!-- Bias Detection -->
+    <string name="rating_notice">Rating Notice</string>
+    <string name="bias_disclaimer">This is an automated detection based on patterns. It does not mean the review is inaccurate or biased.</string>
+    
+    <!-- Appearance -->
+    <string name="appearance">Appearance</string>
     
     <!-- Onboarding -->
     <string name="onboarding_welcome">Welcome to GameRate</string>

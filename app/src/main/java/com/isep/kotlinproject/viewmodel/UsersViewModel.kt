@@ -72,6 +72,9 @@ class UsersViewModel : ViewModel() {
     private var searchLastDocument: DocumentSnapshot? = null
     private var hasMoreSearchResults = true
     
+    // All users cache for local search (when Firestore search fails)
+    private var allUsersCache = mutableListOf<User>()
+    
     // =====================================================
     // PUBLIC PROFILE STATE
     // =====================================================
@@ -118,13 +121,13 @@ class UsersViewModel : ViewModel() {
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
     
     init {
-        // Setup search debounce
+        // Setup search debounce with local filtering
         viewModelScope.launch {
             _searchQuery
                 .debounce(SEARCH_DEBOUNCE_MS)
                 .collect { query ->
                     if (query.isNotBlank()) {
-                        performSearch(query)
+                        performLocalSearch(query)
                     } else {
                         _searchResults.value = emptyList()
                         _isSearching.value = false
@@ -148,6 +151,7 @@ class UsersViewModel : ViewModel() {
         viewModelScope.launch {
             _usersListState.value = UsersListState.Loading
             usersLastDocument = null
+            allUsersCache.clear()
             
             try {
                 val result = userRepository.getAllUsers()
@@ -156,6 +160,9 @@ class UsersViewModel : ViewModel() {
                 _users.value = result.users
                 usersLastDocument = result.lastDocument
                 hasMoreUsers = result.hasMore
+                
+                // Update local cache for search
+                allUsersCache.addAll(result.users)
                 
                 _usersListState.value = UsersListState.Success(
                     users = result.users,
@@ -184,6 +191,13 @@ class UsersViewModel : ViewModel() {
                 usersLastDocument = result.lastDocument
                 hasMoreUsers = result.hasMore
                 
+                // Update local cache for search
+                result.users.forEach { user ->
+                    if (allUsersCache.none { it.uid == user.uid }) {
+                        allUsersCache.add(user)
+                    }
+                }
+                
                 _usersListState.value = UsersListState.Success(
                     users = allUsers,
                     hasMore = result.hasMore
@@ -202,12 +216,16 @@ class UsersViewModel : ViewModel() {
         viewModelScope.launch {
             _isRefreshing.value = true
             usersLastDocument = null
+            allUsersCache.clear()
             
             try {
                 val result = userRepository.getAllUsers()
                 _users.value = result.users
                 usersLastDocument = result.lastDocument
                 hasMoreUsers = result.hasMore
+                
+                // Update local cache for search
+                allUsersCache.addAll(result.users)
                 
                 _usersListState.value = UsersListState.Success(
                     users = result.users,
@@ -232,13 +250,51 @@ class UsersViewModel : ViewModel() {
         _searchQuery.value = query
         if (query.isNotBlank()) {
             _isSearching.value = true
+            
+            // If cache is empty, load all users first before searching
+            if (allUsersCache.isEmpty() && _users.value.isNotEmpty()) {
+                allUsersCache.addAll(_users.value)
+            } else if (allUsersCache.isEmpty()) {
+                // Load users if not loaded yet
+                viewModelScope.launch {
+                    try {
+                        val result = userRepository.getAllUsers()
+                        allUsersCache.addAll(result.users)
+                        _users.value = result.users
+                        usersLastDocument = result.lastDocument
+                        hasMoreUsers = result.hasMore
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading users for search", e)
+                    }
+                }
+            }
         }
     }
     
     /**
-     * Perform search
+     * Perform local search on cached users (more reliable than Firestore search)
+     * This approach works even when displayNameLower field is missing
      */
-    private suspend fun performSearch(query: String) {
+    private fun performLocalSearch(query: String) {
+        val lowerQuery = query.lowercase().trim()
+        
+        // Filter from loaded users cache
+        val filteredUsers = allUsersCache.filter { user ->
+            val displayName = user.getDisplayNameOrLegacy().lowercase()
+            val email = user.email.lowercase()
+            displayName.contains(lowerQuery) || email.contains(lowerQuery)
+        }.sortedBy { it.getDisplayNameOrLegacy().lowercase() }
+        
+        Log.d(TAG, "performLocalSearch: query='$query', found ${filteredUsers.size} users from cache of ${allUsersCache.size}")
+        
+        _searchResults.value = filteredUsers
+        _isSearching.value = false
+    }
+    
+    /**
+     * Perform search via Firestore (fallback, requires displayNameLower field)
+     */
+    private suspend fun performFirestoreSearch(query: String) {
         searchLastDocument = null
         
         try {
@@ -247,7 +303,7 @@ class UsersViewModel : ViewModel() {
             searchLastDocument = result.lastDocument
             hasMoreSearchResults = result.hasMore
         } catch (e: Exception) {
-            Log.e(TAG, "Error searching users", e)
+            Log.e(TAG, "Error searching users via Firestore", e)
             _searchResults.value = emptyList()
         } finally {
             _isSearching.value = false

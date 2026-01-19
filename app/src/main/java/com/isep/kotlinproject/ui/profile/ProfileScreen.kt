@@ -129,7 +129,7 @@ fun ProfileScreen(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = user?.role?.name ?: "Unknown Role", 
+                text = user?.userRole?.name ?: "Unknown Role", 
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )

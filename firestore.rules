@@ -2,309 +2,102 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // =====================================================
-    // HELPER FUNCTIONS
-    // =====================================================
-    
-    // Check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Check if user is the document owner
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Get user document
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
-    // Check if user has editor role
-    function isEditor() {
-      return isAuthenticated() && getUserData().role == 'editor';
-    }
-    
-    // Check if user has player role
-    function isPlayer() {
-      return isAuthenticated() && getUserData().role == 'player';
-    }
-    
-    // Check if the request data contains only allowed fields
-    function hasOnlyFields(allowedFields) {
-      return request.resource.data.keys().hasOnly(allowedFields);
-    }
-    
-    // Check if two users are friends
-    function areFriends(userId1, userId2) {
-      let user1 = get(/databases/$(database)/documents/users/$(userId1)).data;
-      return userId2 in user1.friends;
-    }
-    
-    // =====================================================
-    // USERS COLLECTION
-    // =====================================================
-    
+    // USERS
     match /users/{userId} {
-      // PUBLIC READ ACCESS for user directory feature
-      // Anyone authenticated can read public user profiles
-      // This enables:
-      // - User directory listing (paginated)
-      // - User search by displayNameLower
-      // - Viewing other users' public profiles
-      // - Friend lists display
-      // 
-      // Public fields: uid, displayName, displayNameLower, photoURL, bio, role, 
-      //                likedGames, playedGames, wishlist, wishlistSteamAppIds, createdAt
-      // Private fields (only visible to owner): email, locale, friends (friend list UIDs)
       allow read: if isAuthenticated();
-      
-      // Users can only create their own document
-      // Simplified rules to allow Google Sign-In user creation
-      allow create: if isOwner(userId) &&
-        // UID must match auth UID  
-        request.resource.data.uid == request.auth.uid &&
-        // Role must be valid (if present)
-        (!('role' in request.resource.data) || request.resource.data.role in ['player', 'editor', 'PLAYER', 'EDITOR']);
-      
-      // Users can only update their own document
-      allow update: if isOwner(userId) &&
-        // Cannot change UID or role after creation
-        request.resource.data.uid == resource.data.uid &&
-        request.resource.data.role == resource.data.role &&
-        // Validate array fields if present
-        (!('friends' in request.resource.data) || request.resource.data.friends is list) &&
-        (!('likedGames' in request.resource.data) || request.resource.data.likedGames is list) &&
-        (!('playedGames' in request.resource.data) || request.resource.data.playedGames is list) &&
-        (!('wishlist' in request.resource.data) || request.resource.data.wishlist is list) &&
-        (!('wishlistSteamAppIds' in request.resource.data) || request.resource.data.wishlistSteamAppIds is list) &&
-        // Locale validation
-        (!('locale' in request.resource.data) || request.resource.data.locale in ['fr', 'en']);
-      
-      // Users can only delete their own account
+      allow create: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
       
-      // User notifications subcollection
-      match /notifications/{notificationId} {
-        // Users can only read their own notifications
-        allow read: if isOwner(userId);
-        
-        // Anyone authenticated can create notifications for other users
-        // (for friend requests, messages, etc.)
-        allow create: if isAuthenticated() &&
-          request.resource.data.keys().hasAll(['type', 'timestamp']) &&
-          request.resource.data.type in ['friend_request', 'friend_accepted', 'new_message', 'game_update'];
-        
-        // Users can only update/delete their own notifications
-        allow update, delete: if isOwner(userId);
-      }
-    }
-    
-    // =====================================================
-    // GAMES COLLECTION
-    // =====================================================
-    
-    match /games/{gameId} {
-      // Anyone authenticated can read games
-      allow read: if isAuthenticated();
-      
-      // Only editors can create games
-      allow create: if isEditor() &&
-        // Required fields
-        request.resource.data.keys().hasAll(['editorId', 'editorName', 'title', 'genre']) &&
-        // Editor ID must match the authenticated user
-        request.resource.data.editorId == request.auth.uid &&
-        // Initialize rating fields
-        request.resource.data.averageRating == 0 &&
-        request.resource.data.ratingCount == 0 &&
-        request.resource.data.totalRatingSum == 0;
-      
-      // Update rules:
-      // - Editors can update their own games (all fields except stats)
-      // - Stats are updated via transactions when reviews change
-      allow update: if isAuthenticated() && (
-        // Editor updating their own game (non-stats fields)
-        (isEditor() && 
-         resource.data.editorId == request.auth.uid &&
-         // Cannot change editorId
-         request.resource.data.editorId == resource.data.editorId) ||
-        // Anyone can update stats through transactions (for reviews)
-        // This allows the review transaction to update game stats
-        (request.resource.data.editorId == resource.data.editorId &&
-         request.resource.data.editorName == resource.data.editorName &&
-         request.resource.data.title == resource.data.title &&
-         request.resource.data.description == resource.data.description &&
-         request.resource.data.genre == resource.data.genre &&
-         request.resource.data.releaseDate == resource.data.releaseDate &&
-         request.resource.data.imageUrl == resource.data.imageUrl &&
-         request.resource.data.developer == resource.data.developer)
-      );
-      
-      // Only the editor who created the game can delete it
-      allow delete: if isEditor() && resource.data.editorId == request.auth.uid;
-      
-      // Reviews subcollection for each game
-      match /reviews/{reviewId} {
-        // Anyone authenticated can read reviews
+      // BADGES subcollection
+      match /badges/{badgeId} {
         allow read: if isAuthenticated();
-        
-        // Players can only create reviews with their own userId
-        // Editors cannot review games
-        allow create: if isPlayer() &&
-          request.resource.data.userId == request.auth.uid &&
-          request.resource.data.gameId == gameId &&
-          // Rating validation (1-5 stars)
-          request.resource.data.rating >= 1 &&
-          request.resource.data.rating <= 5 &&
-          // Required fields
-          request.resource.data.keys().hasAll(['gameId', 'userId', 'userName', 'rating', 'timestamp']);
-        
-        // Players can only update their own reviews
-        allow update: if isPlayer() &&
-          resource.data.userId == request.auth.uid &&
-          // Cannot change userId or gameId
-          request.resource.data.userId == resource.data.userId &&
-          request.resource.data.gameId == resource.data.gameId &&
-          // Rating validation
-          request.resource.data.rating >= 1 &&
-          request.resource.data.rating <= 5;
-        
-        // Players can only delete their own reviews
-        allow delete: if isPlayer() && resource.data.userId == request.auth.uid;
+        allow create: if isOwner(userId);
+        allow update, delete: if false; // Badges are permanent
+      }
+      
+      // NOTIFICATIONS subcollection
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow write: if isAuthenticated();
       }
     }
     
-    // =====================================================
-    // GAME STATS COLLECTION (Cloud Functions only)
-    // =====================================================
-    
-    match /game_stats/{gameId} {
-      // Anyone authenticated can read statistics
+    // GAMES
+    match /games/{gameId} {
       allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
       
-      // WRITE OPERATIONS ARE DENIED
-      // Only Cloud Functions with admin SDK can write to this collection
-      allow create, update, delete: if false;
+      match /reviews/{reviewId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+    
+    // REVIEWS (top-level for collection group queries)
+    match /reviews/{reviewId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // REVIEW REPORTS
+    match /review_reports/{reportId} {
+      allow read: if isAuthenticated() && 
+        resource.data.reporterUserId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+        request.resource.data.reporterUserId == request.auth.uid &&
+        request.resource.data.reportedUserId != request.auth.uid;
+      allow update, delete: if false; // Reports are immutable
+    }
+    
+    // GAME HISTORY (audit log)
+    match /game_history/{historyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // History is immutable
+    }
+    
+    // FRIEND REQUESTS
+    match /friend_requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // CHATS
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated();
       
-      // Daily stats subcollection
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+    
+    // GAME STATS
+    match /game_stats/{gameId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Stats should be updated by Cloud Functions only
+      
       match /daily_stats/{date} {
         allow read: if isAuthenticated();
-        // Only Cloud Functions can write
-        allow create, update, delete: if false;
+        allow write: if false;
       }
     }
     
-    // =====================================================
-    // CHATS COLLECTION
-    // =====================================================
-    
-    match /chats/{chatId} {
-      // Users can only read chats they are participants of
-      allow read: if isAuthenticated() && 
-        request.auth.uid in resource.data.participants;
-      
-      // Users can create a chat with another user
-      allow create: if isAuthenticated() &&
-        // Must have exactly 2 participants
-        request.resource.data.participants.size() == 2 &&
-        // Creator must be one of the participants
-        request.auth.uid in request.resource.data.participants &&
-        // Required fields
-        request.resource.data.keys().hasAll(['participants', 'participantNames', 'createdAt']);
-      
-      // Participants can update chat metadata (last message, etc.)
-      allow update: if isAuthenticated() &&
-        request.auth.uid in resource.data.participants &&
-        // Cannot change participants
-        request.resource.data.participants == resource.data.participants;
-      
-      // Either participant can delete the chat
-      allow delete: if isAuthenticated() && 
-        request.auth.uid in resource.data.participants;
-      
-      // Messages subcollection
-      match /messages/{messageId} {
-        // Participants can read messages
-        allow read: if isAuthenticated() &&
-          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        
-        // Participants can create messages
-        allow create: if isAuthenticated() &&
-          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants &&
-          // Sender must be the authenticated user
-          request.resource.data.senderId == request.auth.uid &&
-          // Required fields
-          request.resource.data.keys().hasAll(['senderId', 'senderName', 'content', 'timestamp', 'read']);
-        
-        // Only recipient can mark as read
-        allow update: if isAuthenticated() &&
-          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants &&
-          // Can only update 'read' field
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) &&
-          // Cannot mark own messages as read (only recipient)
-          resource.data.senderId != request.auth.uid;
-        
-        // Sender can delete their own messages
-        allow delete: if isAuthenticated() && 
-          resource.data.senderId == request.auth.uid;
-      }
-    }
-    
-    // =====================================================
-    // FRIEND REQUESTS COLLECTION
-    // =====================================================
-    
-    match /friend_requests/{requestId} {
-      // Users can read friend requests sent to them or by them
-      allow read: if isAuthenticated() &&
-        (resource.data.fromUserId == request.auth.uid || 
-         resource.data.toUserId == request.auth.uid);
-      
-      // Users can create friend requests
-      allow create: if isAuthenticated() &&
-        // Sender must be the authenticated user
-        request.resource.data.fromUserId == request.auth.uid &&
-        // Cannot send request to yourself
-        request.resource.data.toUserId != request.auth.uid &&
-        // Initial status must be pending
-        request.resource.data.status == 'pending' &&
-        // Required fields
-        request.resource.data.keys().hasAll(['fromUserId', 'fromUserName', 'toUserId', 'status', 'timestamp']);
-      
-      // Recipient can accept/reject, sender can cancel (delete)
-      allow update: if isAuthenticated() &&
-        resource.data.toUserId == request.auth.uid &&
-        // Can only change status
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-        // Valid status transitions
-        request.resource.data.status in ['accepted', 'rejected'];
-      
-      // Sender can delete (cancel) their request
-      // Recipient can delete after accepting/rejecting
-      allow delete: if isAuthenticated() &&
-        (resource.data.fromUserId == request.auth.uid ||
-         resource.data.toUserId == request.auth.uid);
-    }
-    
-    // =====================================================
-    // TRENDING COLLECTION (Cloud Functions only)
-    // =====================================================
-    
+    // TRENDING
     match /trending/{period} {
-      // Anyone authenticated can read trending data
       allow read: if isAuthenticated();
-      
-      // Only Cloud Functions can write
-      allow create, update, delete: if false;
+      allow write: if false;
     }
     
-    // =====================================================
-    // GLOBAL REVIEWS COLLECTION GROUP QUERY
-    // =====================================================
-    
-    // This allows querying all reviews across all games for a specific user
-    // Used for the "My Reviews" feature
+    // Collection group query for reviews
     match /{path=**}/reviews/{reviewId} {
       allow read: if isAuthenticated();
     }

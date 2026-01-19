@@ -18,13 +18,16 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,10 +39,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.Timestamp
+import com.isep.kotlinproject.model.BiasDetector
+import com.isep.kotlinproject.model.BiasIndicator
+import com.isep.kotlinproject.model.ReliabilityLevel
+import com.isep.kotlinproject.model.ReportReason
 import com.isep.kotlinproject.model.Review
+import com.isep.kotlinproject.model.ReviewReliability
 import com.isep.kotlinproject.model.UserRole
+import com.isep.kotlinproject.repository.ReportRepository
+import com.isep.kotlinproject.ui.components.BiasWarningChip
+import com.isep.kotlinproject.ui.components.BiasWarningCard
+import com.isep.kotlinproject.ui.components.ReliabilityBadge
+import com.isep.kotlinproject.ui.components.ReportReviewDialog
 import com.isep.kotlinproject.viewmodel.GameViewModel
 import com.isep.kotlinproject.viewmodel.UserViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -64,6 +79,15 @@ fun GameDetailScreen(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    
+    // Report states
+    var showReportDialog by remember { mutableStateOf(false) }
+    var reviewToReport by remember { mutableStateOf<Review?>(null) }
+    val reportRepository = remember { ReportRepository() }
+    
+    // Badge notification
+    val newBadge by viewModel.newBadgeAwarded.collectAsState()
     
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     val isEditor = userRole == UserRole.EDITOR
@@ -356,12 +380,55 @@ fun GameDetailScreen(
                     }
                 }
 
+                // Game-level bias warning (if few reviews)
+                if (reviews.isNotEmpty()) {
+                    item {
+                        val gameBiasIndicators = remember(reviews) {
+                            BiasDetector.detectGameBias(reviews, game?.averageRating ?: 0.0)
+                        }
+                        if (gameBiasIndicators.isNotEmpty()) {
+                            BiasWarningCard(
+                                indicators = gameBiasIndicators,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+
                 items(reviews) { review ->
-                    // Filter out current user review from the general list to avoid duplication if we wanted
-                    // But here we just show all. 
+                    // Calculate reliability based on review data (simplified client-side approach)
+                    // In production, this would come from user data loaded separately
+                    val reliability = remember(review) {
+                        // Simplified: estimate based on review timestamp (older = more established)
+                        val reviewAge = System.currentTimeMillis() - review.timestamp
+                        val reviewAgeDays = reviewAge / (1000 * 60 * 60 * 24)
+                        
+                        ReviewReliability.calculate(
+                            accountCreatedAt = Timestamp(Date(review.timestamp - (reviewAgeDays * 30 * 24 * 60 * 60 * 1000))), // Estimate
+                            reviewCount = (reviewAgeDays / 10).toInt().coerceIn(1, 20), // Heuristic
+                            hasProfilePhoto = review.userPhotoURL.isNotBlank(),
+                            hasBio = false // Unknown from review data
+                        )
+                    }
+                    
+                    // Detect bias for this review (simplified - would need user's other reviews)
+                    val biasIndicators = remember(review, reviews) {
+                        // Check if this user has other reviews in the same game (suspicious)
+                        val userReviewsInGame = reviews.filter { it.userId == review.userId }
+                        BiasDetector.detectUserBias(userReviewsInGame, review)
+                    }
+                    
                     ReviewItem(
                         review = review,
-                        isCurrentUser = review.userId == currentUserId
+                        isCurrentUser = review.userId == currentUserId,
+                        onReport = if (review.userId != currentUserId) {
+                            {
+                                reviewToReport = review
+                                showReportDialog = true
+                            }
+                        } else null,
+                        reliability = reliability,
+                        biasIndicators = biasIndicators
                     )
                 }
             }
@@ -399,6 +466,93 @@ fun GameDetailScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Report Review Dialog
+    if (showReportDialog && reviewToReport != null) {
+        // Capture values before the coroutine to avoid null issues
+        val reportReview = reviewToReport!!
+        
+        ReportReviewDialog(
+            onDismiss = { 
+                showReportDialog = false 
+                reviewToReport = null
+            },
+            onReport = { reason, additionalInfo ->
+                // Close dialog immediately for better UX
+                showReportDialog = false
+                reviewToReport = null
+                
+                // Submit report in background
+                scope.launch {
+                    val result = reportRepository.reportReview(
+                        reviewId = reportReview.id,
+                        gameId = gameId,
+                        reportedUserId = reportReview.userId,
+                        reason = reason,
+                        additionalInfo = additionalInfo
+                    )
+                    result.fold(
+                        onSuccess = {
+                            snackbarHostState.showSnackbar("Report submitted successfully")
+                        },
+                        onFailure = { e ->
+                            snackbarHostState.showSnackbar("Failed to submit report: ${e.message ?: "Unknown error"}")
+                        }
+                    )
+                }
+            }
+        )
+    }
+    
+    // New Badge Notification
+    newBadge?.let { badge ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearNewBadge() },
+            title = { Text("New Badge Earned!") },
+            text = { 
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Badge icon
+                    Surface(
+                        modifier = Modifier.size(64.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = badge.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = badge.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.clearNewBadge() }) {
+                    Text("Awesome!")
                 }
             }
         )
@@ -511,14 +665,25 @@ fun UserReviewCard(
 }
 
 @Composable
-fun ReviewItem(review: Review, isCurrentUser: Boolean) {
+fun ReviewItem(
+    review: Review, 
+    isCurrentUser: Boolean,
+    onReport: (() -> Unit)? = null,
+    reliability: ReviewReliability? = null,
+    biasIndicators: List<BiasIndicator> = emptyList()
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    
     // Basic review item (reuse similar logic or simplify)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Surface(
                 shape = CircleShape,
                 color = if (isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
@@ -533,8 +698,16 @@ fun ReviewItem(review: Review, isCurrentUser: Boolean) {
                 }
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(review.userName, fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(review.userName, fontWeight = FontWeight.Bold)
+                    
+                    // Reliability badge
+                    if (reliability != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        ReliabilityBadge(reliability = reliability)
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     repeat(5) { index ->
                         Icon(
@@ -552,6 +725,41 @@ fun ReviewItem(review: Review, isCurrentUser: Boolean) {
                     )
                 }
             }
+            
+            // Report menu for other users' reviews
+            if (onReport != null) {
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert, 
+                            contentDescription = "More options",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Report") },
+                            leadingIcon = { 
+                                Icon(
+                                    Icons.Default.Flag, 
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                ) 
+                            },
+                            onClick = {
+                                showMenu = false
+                                onReport()
+                            }
+                        )
+                    }
+                }
+            }
         }
         if (review.comment.isNotBlank()) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -561,6 +769,20 @@ fun ReviewItem(review: Review, isCurrentUser: Boolean) {
                 modifier = Modifier.padding(start = 44.dp)
             )
         }
+        
+        // Bias indicators (if any)
+        if (biasIndicators.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.padding(start = 44.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                biasIndicators.take(2).forEach { indicator ->
+                    BiasWarningChip(indicator = indicator)
+                }
+            }
+        }
+        
         HorizontalDivider(modifier = Modifier.padding(top = 12.dp).padding(start = 44.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
     }
 }

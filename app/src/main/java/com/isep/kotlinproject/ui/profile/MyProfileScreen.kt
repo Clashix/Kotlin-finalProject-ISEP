@@ -134,7 +134,7 @@ fun MyProfileScreen(
                     photoUrl = user.photoURL.ifEmpty { user.getPhotoURLOrLegacy() },
                     displayName = user.getDisplayNameOrLegacy(),
                     email = user.email,
-                    role = user.role,
+                    role = user.userRole,
                     bio = user.bio,
                     friendsCount = friends.size,
                     reviewsCount = userReviews.size,

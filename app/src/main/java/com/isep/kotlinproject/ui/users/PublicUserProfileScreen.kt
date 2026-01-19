@@ -32,11 +32,15 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.isep.kotlinproject.R
 import com.isep.kotlinproject.api.SteamAppDetails
+import com.isep.kotlinproject.model.Badge
 import com.isep.kotlinproject.model.Game
 import com.isep.kotlinproject.model.ReviewWithGame
 import com.isep.kotlinproject.model.User
 import com.isep.kotlinproject.model.UserRole
+import com.isep.kotlinproject.repository.BadgeRepository
+import com.isep.kotlinproject.ui.components.BadgesRow
 import com.isep.kotlinproject.viewmodel.UsersViewModel
+import com.isep.kotlinproject.viewmodel.UserViewModel
 import kotlinx.coroutines.launch
 
 /**
@@ -48,10 +52,29 @@ import kotlinx.coroutines.launch
 fun PublicUserProfileScreen(
     userId: String,
     viewModel: UsersViewModel,
+    userViewModel: com.isep.kotlinproject.viewmodel.UserViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToGame: (String) -> Unit,
     onNavigateToChat: (String, String) -> Unit
 ) {
+    val currentUser by userViewModel.currentUser.collectAsState()
+    val pendingRequests by userViewModel.pendingFriendRequests.collectAsState()
+    
+    // Friendship state
+    val isFriend = currentUser?.friends?.contains(userId) == true
+    val hasPendingRequest = pendingRequests.any { it.fromUserId == userId }
+    val isOwnProfile = currentUser?.uid == userId
+    
+    // Follow editor state
+    val isFollowingEditor = currentUser?.followingEditors?.contains(userId) == true
+    
+    // Badges
+    var userBadges by remember { mutableStateOf<List<Badge>>(emptyList()) }
+    val badgeRepository = remember { BadgeRepository() }
+    
+    // Snackbar for feedback
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val profileState by viewModel.profileState.collectAsState()
     val profileUser by viewModel.profileUser.collectAsState()
     val userReviews by viewModel.userReviews.collectAsState()
@@ -64,6 +87,8 @@ fun PublicUserProfileScreen(
     // Load profile on first composition
     LaunchedEffect(userId) {
         viewModel.loadPublicProfile(userId)
+        // Load badges
+        userBadges = badgeRepository.getUserBadges(userId)
     }
     
     Scaffold(
@@ -82,7 +107,8 @@ fun PublicUserProfileScreen(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when (profileState) {
             is UsersViewModel.ProfileState.Loading -> {
@@ -137,6 +163,26 @@ fun PublicUserProfileScreen(
                         hasMoreReviews = viewModel.hasMoreReviews(),
                         onNavigateToGame = onNavigateToGame,
                         onSendMessage = { onNavigateToChat(user.uid, user.getDisplayNameOrLegacy()) },
+                        isFriend = isFriend,
+                        hasPendingRequest = hasPendingRequest,
+                        isOwnProfile = isOwnProfile,
+                        onAddFriend = {
+                            userViewModel.sendFriendRequest(userId) { success ->
+                                scope.launch {
+                                    val message = if (success) "Friend request sent!" else "Failed to send request"
+                                    snackbarHostState.showSnackbar(message)
+                                }
+                            }
+                        },
+                        badges = userBadges,
+                        isFollowingEditor = isFollowingEditor,
+                        onFollowEditor = {
+                            scope.launch {
+                                userViewModel.toggleFollowEditor(userId)
+                                val message = if (isFollowingEditor) "Unfollowed editor" else "Following editor"
+                                snackbarHostState.showSnackbar(message)
+                            }
+                        },
                         modifier = Modifier.padding(padding)
                     )
                 }
@@ -159,6 +205,13 @@ private fun PublicProfileContent(
     hasMoreReviews: Boolean,
     onNavigateToGame: (String) -> Unit,
     onSendMessage: () -> Unit,
+    isFriend: Boolean,
+    hasPendingRequest: Boolean,
+    isOwnProfile: Boolean,
+    onAddFriend: () -> Unit,
+    badges: List<Badge>,
+    isFollowingEditor: Boolean,
+    onFollowEditor: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabs = listOf(
@@ -175,7 +228,14 @@ private fun PublicProfileContent(
         ProfileHeader(
             user = user,
             reviewCount = reviews.size,
-            onSendMessage = onSendMessage
+            onSendMessage = onSendMessage,
+            isFriend = isFriend,
+            hasPendingRequest = hasPendingRequest,
+            isOwnProfile = isOwnProfile,
+            onAddFriend = onAddFriend,
+            badges = badges,
+            isFollowingEditor = isFollowingEditor,
+            onFollowEditor = onFollowEditor
         )
         
         // Tab Row
@@ -241,7 +301,14 @@ private fun PublicProfileContent(
 private fun ProfileHeader(
     user: User,
     reviewCount: Int,
-    onSendMessage: () -> Unit
+    onSendMessage: () -> Unit,
+    isFriend: Boolean,
+    hasPendingRequest: Boolean,
+    isOwnProfile: Boolean,
+    onAddFriend: () -> Unit,
+    badges: List<Badge>,
+    isFollowingEditor: Boolean,
+    onFollowEditor: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -289,7 +356,7 @@ private fun ProfileHeader(
         // Role badge
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = if (user.role == UserRole.EDITOR) 
+            color = if (user.userRole == UserRole.EDITOR) 
                 MaterialTheme.colorScheme.primaryContainer 
             else 
                 MaterialTheme.colorScheme.secondaryContainer
@@ -299,7 +366,7 @@ private fun ProfileHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = if (user.role == UserRole.EDITOR) 
+                    imageVector = if (user.userRole == UserRole.EDITOR) 
                         Icons.Default.Edit 
                     else 
                         Icons.Default.SportsEsports,
@@ -308,13 +375,19 @@ private fun ProfileHeader(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = if (user.role == UserRole.EDITOR) 
+                    text = if (user.userRole == UserRole.EDITOR) 
                         stringResource(R.string.role_editor) 
                     else 
                         stringResource(R.string.role_player),
                     style = MaterialTheme.typography.labelMedium
                 )
             }
+        }
+        
+        // Badges
+        if (badges.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            BadgesRow(badges = badges)
         }
         
         // Bio
@@ -353,18 +426,102 @@ private fun ProfileHeader(
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        // Message button
-        OutlinedButton(
-            onClick = onSendMessage,
-            modifier = Modifier.fillMaxWidth(0.6f)
-        ) {
-            Icon(
-                Icons.Default.Message,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(stringResource(R.string.send_message))
+        // Action buttons row
+        if (!isOwnProfile) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                ) {
+                    // Friend button
+                    when {
+                        isFriend -> {
+                            // Already friends
+                            OutlinedButton(
+                                onClick = { },
+                                enabled = false,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.friends))
+                            }
+                        }
+                        hasPendingRequest -> {
+                            // Pending request from this user
+                            OutlinedButton(
+                                onClick = { },
+                                enabled = false,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.pending))
+                            }
+                        }
+                        else -> {
+                            // Can add as friend
+                            Button(
+                                onClick = onAddFriend,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Default.PersonAdd,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.add_friend))
+                            }
+                        }
+                    }
+                    
+                    // Message button
+                    OutlinedButton(
+                        onClick = onSendMessage,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Default.Message,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(R.string.message))
+                    }
+                }
+                
+                // Follow Editor button (only for editors)
+                if (user.userRole == UserRole.EDITOR) {
+                    Button(
+                        onClick = onFollowEditor,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = if (isFollowingEditor) 
+                            ButtonDefaults.outlinedButtonColors() 
+                        else 
+                            ButtonDefaults.buttonColors()
+                    ) {
+                        Icon(
+                            if (isFollowingEditor) Icons.Default.Check else Icons.Default.PersonAdd,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (isFollowingEditor) "Following" else "Follow Editor")
+                    }
+                }
+            }
         }
     }
 }

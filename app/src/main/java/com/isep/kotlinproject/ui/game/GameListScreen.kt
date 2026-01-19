@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.isep.kotlinproject.model.Game
 import com.isep.kotlinproject.model.UserRole
+import com.isep.kotlinproject.repository.GameSortOption
 import com.isep.kotlinproject.viewmodel.GameViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,7 +44,9 @@ fun GameListScreen(
     val filteredGames by viewModel.searchResults.collectAsState()
     val allGames by viewModel.games.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val currentSortOption by viewModel.currentSortOption.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var showSortMenu by remember { mutableStateOf(false) }
     
     val isEditor = userRole == UserRole.EDITOR
 
@@ -56,6 +60,42 @@ fun GameListScreen(
                     ) 
                 },
                 actions = {
+                    // Sort button with dropdown
+                    Box {
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Sort")
+                        }
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false }
+                        ) {
+                            GameSortOption.values().forEach { option ->
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            option.displayName,
+                                            fontWeight = if (option == currentSortOption) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    onClick = {
+                                        viewModel.setSortOption(option)
+                                        showSortMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (option == currentSortOption) {
+                                            Icon(
+                                                Icons.Default.Star,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
                     IconButton(onClick = onProfileClick) {
                         // Profile Avatar Placeholder or Icon
                         Surface(

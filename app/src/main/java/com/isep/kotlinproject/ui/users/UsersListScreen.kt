@@ -285,7 +285,7 @@ private fun UserListItem(
             Spacer(modifier = Modifier.width(8.dp))
             
             // Role badge
-            RoleBadge(role = user.role)
+            RoleBadge(role = user.userRole)
         }
     }
 }

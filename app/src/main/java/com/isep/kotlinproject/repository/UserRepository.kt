@@ -698,14 +698,17 @@ class UserRepository {
                             ?: data?.get("profileImageUrl") as? String 
                             ?: "",
                         bio = data?.get("bio") as? String ?: "",
-                        _role = (data?.get("role") as? String)?.lowercase() ?: "player",
+                        role = (data?.get("role") as? String)?.lowercase() ?: "player",
                         locale = data?.get("locale") as? String ?: "en",
                         friends = (data?.get("friends") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                         likedGames = (data?.get("likedGames") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                         playedGames = (data?.get("playedGames") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                         wishlist = (data?.get("wishlist") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                         wishlistSteamAppIds = (data?.get("wishlistSteamAppIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-                        name = data?.get("name") as? String ?: ""
+                        followingEditors = (data?.get("followingEditors") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                        themePreference = data?.get("themePreference") as? String ?: "system",
+                        name = data?.get("name") as? String ?: "",
+                        profileImageUrl = data?.get("profileImageUrl") as? String ?: ""
                     )
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing user ${doc.id}: ${e.message}", e)
@@ -869,6 +872,128 @@ class UserRepository {
             Log.e(TAG, "Error removing Steam game from wishlist", e)
             false
         }
+    }
+    
+    // =====================================================
+    // FOLLOW EDITOR
+    // =====================================================
+    
+    /**
+     * Follow an editor
+     */
+    suspend fun followEditor(editorId: String): Boolean {
+        val userId = auth.currentUser?.uid ?: return false
+        
+        return try {
+            usersCollection.document(userId).update(
+                "followingEditors", FieldValue.arrayUnion(editorId)
+            ).await()
+            Log.d(TAG, "Followed editor $editorId")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error following editor", e)
+            false
+        }
+    }
+    
+    /**
+     * Unfollow an editor
+     */
+    suspend fun unfollowEditor(editorId: String): Boolean {
+        val userId = auth.currentUser?.uid ?: return false
+        
+        return try {
+            usersCollection.document(userId).update(
+                "followingEditors", FieldValue.arrayRemove(editorId)
+            ).await()
+            Log.d(TAG, "Unfollowed editor $editorId")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unfollowing editor", e)
+            false
+        }
+    }
+    
+    /**
+     * Check if current user is following an editor
+     */
+    suspend fun isFollowingEditor(editorId: String): Boolean {
+        val userId = auth.currentUser?.uid ?: return false
+        
+        return try {
+            val user = getUser(userId) ?: return false
+            val followingEditors = user.toMap()["followingEditors"] as? List<*> ?: emptyList<String>()
+            editorId in followingEditors.filterIsInstance<String>()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking follow status", e)
+            false
+        }
+    }
+    
+    /**
+     * Get list of editors that current user is following
+     */
+    suspend fun getFollowingEditors(): List<User> {
+        val userId = auth.currentUser?.uid ?: return emptyList()
+        
+        return try {
+            val snapshot = usersCollection.document(userId).get().await()
+            val data = snapshot.data
+            val followingIds = (data?.get("followingEditors") as? List<*>)
+                ?.filterIsInstance<String>() ?: emptyList()
+            
+            if (followingIds.isEmpty()) return emptyList()
+            
+            val editors = mutableListOf<User>()
+            for (editorId in followingIds) {
+                getUser(editorId)?.let { editors.add(it) }
+            }
+            editors
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting following editors", e)
+            emptyList()
+        }
+    }
+    
+    /**
+     * Get following editors as Flow (real-time updates)
+     */
+    fun getFollowingEditorsFlow(): Flow<List<User>> = callbackFlow {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        
+        val subscription = usersCollection.document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error listening to following editors", error)
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val data = snapshot?.data
+                val followingIds = (data?.get("followingEditors") as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
+                
+                if (followingIds.isEmpty()) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                // Fetch editor details
+                CoroutineScope(Dispatchers.IO).launch {
+                    val editors = mutableListOf<User>()
+                    for (editorId in followingIds) {
+                        getUser(editorId)?.let { editors.add(it) }
+                    }
+                    trySend(editors)
+                }
+            }
+        
+        awaitClose { subscription.remove() }
     }
     
     // =====================================================
